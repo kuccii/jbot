@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+*.key
+
+# Data
+data/
+*.db
+
+# Playwright browsers
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

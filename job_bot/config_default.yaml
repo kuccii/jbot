@@ -1,0 +1,41 @@
+profile:
+  name: ""
+  email: ""
+  phone: ""
+  cv_path: ""
+  skills: []
+
+llm:
+  provider: ollama
+  model: llama3.1:8b
+  embedding_model: nomic-embed-text
+  temperature: 0.3
+
+discovery:
+  interval_hours: 24
+  sources:
+    google_search: true
+    linkedin: true
+    indeed: false
+    ycombinator: true
+    grants: true
+  companies: []
+  serper_api_key: ""
+  grants_keywords: []
+
+application:
+  human_approval: true
+  max_applications_per_run: 5
+  save_drafts: true
+  headless: true
+
+notifications:
+  whatsapp:
+    enabled: false
+    phone_number_id: ""
+    token: ""
+    recipient: ""
+
+database:
+  path: "data/job_bot.db"
+  vector_path: "data/vectors"
