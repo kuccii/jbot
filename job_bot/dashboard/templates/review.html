@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Review Queue{% endblock %}
+{% block content %}
+<div class="page-title">⭐ Review Queue</div>
+
+<div style="margin-bottom: 1rem;">
+    <button class="btn btn-success" onclick="bulkApprove()">Approve Top 5</button>
+</div>
+
+<div id="review-cards">
+    {% for r in reviews %}
+    <div class="card" id="review-{{ r.id }}">
+        <div class="card-header">{{ r.title }} @ {{ r.company }}</div>
+        <div class="card-meta">
+            Score: <span class="{% if r.score >= 0.7 %}score-high{% elif r.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
+                {{ "%.0f"|format(r.score * 100) }}%
+            </span>
+            | Source: {{ r.source }} | ID: {{ r.id }}
+        </div>
+        <div class="form-group">
+            <label>Cover Letter</label>
+            <textarea id="cover-{{ r.id }}" rows="4">{{ r.cover_letter }}</textarea>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-success btn-sm" onclick="approve({{ r.id }})">✅ Approve</button>
+            <button class="btn btn-sm btn-primary" onclick="approve({{ r.id }})">💾 Edit & Approve</button>
+            <button class="btn btn-danger btn-sm" onclick="reject({{ r.id }})">❌ Reject</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <p style="color: #999; text-align: center;">No pending reviews. Run discovery first!</p>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function approve(id) {
+    const cover = document.getElementById('cover-' + id).value;
+    fetch('/api/review/' + id + '/approve', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cover_letter: cover})
+    }).then(r => r.json()).then(data => {
+        if (data.success) document.getElementById('review-' + id).style.opacity = '0.3';
+    });
+}
+function reject(id) {
+    fetch('/api/review/' + id + '/reject', {method: 'POST'}).then(r => r.json()).then(data => {
+        if (data.success) document.getElementById('review-' + id).style.display = 'none';
+    });
+}
+function bulkApprove() {
+    document.querySelectorAll('[id^="review-"]').forEach((el, i) => {
+        if (i < 5) approve(el.id.replace('review-', ''));
+    });
+}
+</script>
+{% endblock %}

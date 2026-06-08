@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Bot - {% block title %}Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>🤖 Job Bot</h2>
+            </div>
+            <ul class="nav-links">
+                <li><a href="/" class="{{ 'active' if page == 'home' }}">📊 Dashboard</a></li>
+                <li><a href="/opportunities" class="{{ 'active' if page == 'opportunities' }}">📋 Opportunities</a></li>
+                <li><a href="/review" class="{{ 'active' if page == 'review' }}">⭐ Review Queue</a></li>
+                <li><a href="/applications" class="{{ 'active' if page == 'applications' }}">📨 Applications</a></li>
+                <li><a href="/settings" class="{{ 'active' if page == 'settings' }}">⚙️ Settings</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <small>v0.1.0</small>
+            </div>
+        </nav>
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>

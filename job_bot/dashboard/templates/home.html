@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-title">📊 Dashboard</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="value">{{ stats.total }}</div>
+        <div class="label">Total Discovered</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.new }}</div>
+        <div class="label">New (Pending)</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.applied }}</div>
+        <div class="label">Applications Sent</div>
+    </div>
+    <div class="stat-card">
+        <div class="value">{{ stats.get('rejected', 0) }}</div>
+        <div class="label">Rejected</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 1rem;">
+    <div class="card-header">⚡ Quick Actions</div>
+    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <a href="/opportunities" class="btn btn-primary">View Opportunities</a>
+        <a href="/review" class="btn btn-success">Review Queue</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">📈 Discovery Trend (Last 14 Days)</div>
+    <canvas id="trendChart" height="100"></canvas>
+</div>
+
+<div class="card">
+    <div class="card-header">🕐 Recent Activity</div>
+    <ul style="list-style: none; padding: 0;">
+        {% for entry in activity %}
+        <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee; font-size: 0.9rem;">
+            <span style="color: #666;">{{ entry.created_at[:16] if entry.created_at else '' }}</span>
+            — <strong>{{ entry.action }}</strong>
+            <span style="color: #999;">({{ entry.component }})</span>
+        </li>
+        {% else %}
+        <li style="color: #999;">No recent activity</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+fetch('/api/stats/daily')
+    .then(r => r.json())
+    .then(data => {
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Opportunities Found',
+                    data: data.values,
+                    borderColor: '#4361ee',
+                    fill: true,
+                    backgroundColor: 'rgba(67,97,238,0.1)',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    });
+</script>
+{% endblock %}

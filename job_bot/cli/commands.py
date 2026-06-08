@@ -101,6 +101,14 @@ def status():
 
 
 @app.command()
+def dashboard(host: str = "127.0.0.1", port: int = 8080):
+    """Launch the web dashboard."""
+    from job_bot.dashboard.server import run_server
+    typer.echo(f"Dashboard starting at http://{host}:{port}")
+    run_server(host=host, port=port)
+
+
+@app.command()
 def config():
     """Show current configuration."""
     cfg = load_config()

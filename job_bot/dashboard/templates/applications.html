@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+<div class="page-title">📨 Applications</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Company</th>
+            <th>Role</th>
+            <th>Platform</th>
+            <th>Status</th>
+            <th>Submitted</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in applications %}
+        <tr>
+            <td>{{ a.company }}</td>
+            <td>{{ a.role }}</td>
+            <td><span class="status-badge status-new">{{ a.platform }}</span></td>
+            <td><span class="status-badge status-{{ a.status }}">{{ a.status }}</span></td>
+            <td>{{ a.submitted_at[:10] if a.submitted_at else "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Opportunities{% endblock %}
+{% block content %}
+<div class="page-title">📋 Opportunities</div>
+
+<div class="filters">
+    <select id="filter-source">
+        <option value="">All Sources</option>
+        {% for s in sources %}
+        <option value="{{ s }}">{{ s }}</option>
+        {% endfor %}
+    </select>
+    <select id="filter-status">
+        <option value="">All Statuses</option>
+        <option value="new">New</option>
+        <option value="applied">Applied</option>
+        <option value="rejected">Rejected</option>
+    </select>
+    <input type="text" id="filter-search" placeholder="Search by title...">
+</div>
+
+<table id="opps-table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Company</th>
+            <th>Source</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for opp in opportunities %}
+        <tr onclick="showDetail({{ opp.id }})" style="cursor: pointer;">
+            <td>{{ opp.title[:60] if opp.title else '' }}</td>
+            <td>{{ opp.company }}</td>
+            <td><span class="status-badge status-new">{{ opp.source }}</span></td>
+            <td class="{% if opp.score and opp.score >= 0.7 %}score-high{% elif opp.score and opp.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
+                {{ "%.0f"|format(opp.score * 100) if opp.score else "—" }}%
+            </td>
+            <td><span class="status-badge status-{{ opp.status or 'new' }}">{{ opp.status or 'new' }}</span></td>
+            <td>{{ opp.created_at.strftime("%Y-%m-%d") if opp.created_at else "—" }}</td>
+            <td><a href="{{ opp.url }}" target="_blank" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">View</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="modal" id="detail-modal">
+    <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <h3 id="modal-title"></h3>
+            <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+        </div>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+function showDetail(id) {
+    fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
+        document.getElementById('modal-title').textContent = opp.title;
+        let html = '<p><strong>Company:</strong> ' + opp.company + '</p>';
+        html += '<p><strong>Source:</strong> ' + opp.source + '</p>';
+        html += '<p><strong>Status:</strong> ' + opp.status + '</p>';
+        html += '<p><strong>Score:</strong> ' + (opp.score ? Math.round(opp.score*100) + '%' : '—') + '</p>';
+        html += '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
+        html += '<p><strong>Description:</strong></p><p>' + (opp.description || 'No description') + '</p>';
+        html += '<div style="margin-top: 1rem;"><a href="' + opp.url + '" target="_blank" class="btn btn-primary">Open Link</a></div>';
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('detail-modal').classList.add('open');
+    });
+}
+function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}
