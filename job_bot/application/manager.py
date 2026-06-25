@@ -8,7 +8,14 @@ class ApplicationManager:
     def __init__(self, headless: bool = True):
         self.headless = headless
 
-    async def submit(self, url: str, profile: dict, cover_letter: str) -> dict:
+    async def submit(self, url: str, profile: dict, cover_letter: str, category: str = "job") -> dict:
+        if category in ("startup", "grant"):
+            return {
+                "success": True,
+                "message": f"{category.title()} applications require manual submission via the program's portal. Document prepared.",
+                "platform": category,
+                "url": url,
+            }
         applier = get_applier(url)
         if not applier:
             return {"success": False, "message": f"No applier found for {url}"}
