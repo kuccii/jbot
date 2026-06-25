@@ -92,6 +92,9 @@
         <label><input type="checkbox" name="source_grants" {{ 'checked' if config.discovery.sources.grants }}> Grants & Fellowships</label>
     </div>
     <div class="form-group">
+        <label><input type="checkbox" name="source_ycombinator" {{ 'checked' if config.discovery.sources.ycombinator }}> Y Combinator Startups</label>
+    </div>
+    <div class="form-group">
         <label>Serper API Key <small style="color:#999;">(required for Google Search)</small></label>
         <input type="password" name="serper_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_serper_key else 'Paste your Serper API key' }}">
     </div>
@@ -100,8 +103,8 @@
         <input type="text" name="grants_keywords" value="{{ config.discovery.grants_keywords|join(', ') }}" placeholder="AI research, tech fellowship, startup grant">
     </div>
     <div class="form-group">
-        <label>Target Companies (one per line)</label>
-        <textarea name="companies" rows="3">{{ config.discovery.companies|join('\n') }}</textarea>
+        <label>Target Websites (URLs or company names, one per line)</label>
+        <textarea name="companies" rows="3" placeholder="https://openai.com/careers&#10;https://ycombinator.com/companies&#10;deepmind">{{ config.discovery.companies|join('\n') }}</textarea>
     </div>
     <div class="form-group">
         <label>Discovery Interval (hours)</label>
