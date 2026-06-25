@@ -1,0 +1,42 @@
+application:
+  headless: true
+  human_approval: true
+  max_applications_per_run: 5
+  save_drafts: true
+database:
+  path: data/job_bot.db
+  vector_path: data/vectors
+discovery:
+  companies: []
+  grants_keywords: []
+  interval_hours: 24
+  serper_api_key: ''
+  sources:
+    google_search: false
+    grants: false
+    indeed: false
+    linkedin: false
+    ycombinator: true
+llm:
+  embedding_model: nomic-embed-text
+  gemini_api_key: ''
+  model: llama3.1:8b
+  nim_api_key: ''
+  ollama_base_url: http://localhost:11434
+  provider: ollama
+  temperature: 0.3
+notifications:
+  whatsapp:
+    enabled: false
+    phone_number_id: ''
+    recipient: ''
+    token: ''
+profile:
+  cv_path: ''
+  email: test@example.com
+  name: Test User
+  phone: '+250700000000'
+  skills:
+  - Python
+  - AI
+  - Product Design

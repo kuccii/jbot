@@ -16,8 +16,11 @@ class DiscoveryOrchestrator:
             skills=self.config.get("skills", []),
             keywords=self.config.get("grants_keywords", []),
         )
+        sources_config = self.config.get("sources", {})
         all_ops = []
         for name in list_scrapers():
+            if not sources_config.get(name, True):
+                continue
             try:
                 scraper = get_scraper(name)
                 if name == "google_search":
@@ -33,6 +36,7 @@ class DiscoveryOrchestrator:
                         "description": opp.description,
                         "source": opp.source,
                         "remote": opp.remote,
+                        "category": opp.category,
                     })
                     if oid:
                         all_ops.append(opp)
