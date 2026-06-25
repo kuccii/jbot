@@ -65,5 +65,25 @@ class TestDatabase:
         })
         assert app_id > 0
 
+    def test_opportunity_with_category(self, repo):
+        oid = repo.add_opportunity({
+            "title": "YC W26",
+            "company": "Y Combinator",
+            "url": "https://ycombinator.com/apply",
+            "category": "startup",
+            "program": "YC W26",
+            "stage": "Pre-seed",
+            "amount": "$500K",
+        })
+        assert oid > 0
+        from job_bot.database.models import Opportunity
+        from sqlalchemy.orm import Session
+        with Session(repo.engine) as session:
+            opp = session.query(Opportunity).filter_by(id=oid).first()
+            assert opp.category == "startup"
+            assert opp.program == "YC W26"
+            assert opp.stage == "Pre-seed"
+            assert opp.amount == "$500K"
+
     def test_audit_log(self, repo):
         repo.log_audit("test_action", "test_component", {"key": "value"})

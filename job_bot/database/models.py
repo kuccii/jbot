@@ -25,6 +25,10 @@ class Opportunity(Base):
     matched_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    category = Column(String(50), default="job")
+    program = Column(String(300), default="")
+    stage = Column(String(100), default="")
+    amount = Column(String(200), default="")
 
 
 class Application(Base):
