@@ -19,6 +19,7 @@ class ReviewManager:
             score = await self.matcher.score(
                 profile.get("cv_text", ""),
                 f"{opp.title} {opp.description}",
+                category=opp.category,
             )
             cover = await self.drafter.generate_cover_letter(
                 profile.get("cv_text", ""),
