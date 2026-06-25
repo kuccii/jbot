@@ -91,6 +91,7 @@ async def api_stats():
     repo = get_repo()
     stats = repo.get_stats()
     stats["rejected"] = stats.get("rejected", 0)
+    stats["by_category"] = repo.get_stats_by_category()
     return stats
 
 
@@ -113,7 +114,8 @@ async def daily_stats():
 
 
 @app.get("/opportunities", response_class=HTMLResponse)
-async def opportunities_page(request: Request):
+@app.get("/opportunities/{category:path}", response_class=HTMLResponse)
+async def opportunities_page(request: Request, category: str = "all"):
     repo = get_repo()
     sources = []
     with repo.engine.connect() as conn:
@@ -121,9 +123,13 @@ async def opportunities_page(request: Request):
         result = conn.execute(text("SELECT DISTINCT source FROM opportunities WHERE source IS NOT NULL"))
         sources = [row[0] for row in result if row[0]]
     with Session(repo.engine) as session:
-        opps = session.query(Opportunity).order_by(Opportunity.created_at.desc()).limit(100).all()
+        query = session.query(Opportunity).order_by(Opportunity.created_at.desc()).limit(100)
+        if category in ("job", "startup", "grant"):
+            query = query.filter(Opportunity.category == category)
+        opps = query.all()
     return templates.TemplateResponse(request, "opportunities.html", {
         "opportunities": opps, "sources": sources, "page": "opportunities",
+        "current_category": category,
     })
 
 
@@ -139,22 +145,28 @@ async def opportunity_detail(opp_id: int):
             "url": opp.url, "source": opp.source, "status": opp.status,
             "score": opp.score, "location": opp.location, "remote": opp.remote,
             "description": opp.description, "salary_range": opp.salary_range,
+            "category": opp.category, "program": opp.program,
+            "stage": opp.stage, "amount": opp.amount,
         }
 
 
 @app.get("/review", response_class=HTMLResponse)
-async def review_page(request: Request):
+@app.get("/review/{category:path}", response_class=HTMLResponse)
+async def review_page(request: Request, category: str = "all"):
     repo = get_repo()
-    pending = repo.get_pending_opportunities(min_score=0.3)
+    if category in ("job", "startup", "grant"):
+        pending = repo.get_pending_opportunities(min_score=0.3, category=category)
+    else:
+        pending = repo.get_pending_opportunities(min_score=0.3)
     reviews = []
     for opp in pending:
         reviews.append({
             "id": opp.id, "title": opp.title, "company": opp.company,
-            "source": opp.source, "score": opp.score or 0.5,
+            "source": opp.source, "score": opp.score or 0.5, "category": opp.category,
             "cover_letter": f"Dear {opp.company} team,\n\nI am excited to apply for {opp.title} at {opp.company}. With my background in {', '.join(load_config().profile.skills) if load_config().profile.skills else 'relevant skills'}, I believe I would be a strong addition to your team.\n\nBest regards,\n{load_config().profile.name or 'Applicant'}",
         })
     return templates.TemplateResponse(request, "review.html", {
-        "reviews": reviews, "page": "review",
+        "reviews": reviews, "page": "review", "current_category": category,
     })
 
 
