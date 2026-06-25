@@ -124,10 +124,10 @@ async def opportunities_page(request: Request, category: str = "all"):
         result = conn.execute(text("SELECT DISTINCT source FROM opportunities WHERE source IS NOT NULL"))
         sources = [row[0] for row in result if row[0]]
     with Session(repo.engine) as session:
-        query = session.query(Opportunity).order_by(Opportunity.created_at.desc()).limit(100)
+        query = session.query(Opportunity)
         if category in ("job", "startup", "grant"):
             query = query.filter(Opportunity.category == category)
-        opps = query.all()
+        opps = query.order_by(Opportunity.created_at.desc()).limit(100).all()
     return templates.TemplateResponse(request, "opportunities.html", {
         "opportunities": opps, "sources": sources, "page": "opportunities",
         "current_category": category,

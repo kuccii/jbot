@@ -41,6 +41,42 @@ class TestDashboard:
             assert resp.status_code == 200
 
     @pytest.mark.asyncio
+    async def test_opportunities_jobs_page(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/opportunities/job")
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_opportunities_startup_page(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/opportunities/startup")
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_opportunities_grant_page(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/opportunities/grant")
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_stats_has_by_category(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/api/stats")
+            data = resp.json()
+            assert "by_category" in data
+
+    @pytest.mark.asyncio
+    async def test_review_page_with_category(self):
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.get("/review/job")
+            assert resp.status_code == 200
+
+    @pytest.mark.asyncio
     async def test_daily_stats_api(self):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as client:
