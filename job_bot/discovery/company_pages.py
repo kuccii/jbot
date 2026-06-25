@@ -60,6 +60,8 @@ class CompanyPagesScraper(BaseScraper):
         entry = entry.strip()
         if entry.startswith(("http://", "https://")):
             return entry
+        if "." in entry:
+            return f"https://{entry}"
         return f"https://{entry}.com/careers"
 
     @staticmethod
