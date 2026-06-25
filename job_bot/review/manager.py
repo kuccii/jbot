@@ -26,6 +26,7 @@ class ReviewManager:
                 opp.title,
                 opp.company,
                 profile.get("skills", []),
+                category=opp.category,
             )
             reviews.append({
                 "opportunity_id": opp.id,

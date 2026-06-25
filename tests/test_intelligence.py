@@ -70,3 +70,35 @@ class TestDrafter:
         provider = create_provider("ollama")
         drafter = Drafter(provider)
         assert drafter is not None
+
+    @pytest.mark.asyncio
+    async def test_draft_job_cover_letter(self):
+        drafter = Drafter(MockProvider("Job cover letter text"))
+        result = await drafter.generate_cover_letter(
+            "Profile", "Engineer", "Acme", ["Python", "AI"], category="job",
+        )
+        assert "Job cover letter text" in result
+
+    @pytest.mark.asyncio
+    async def test_draft_startup_pitch(self):
+        drafter = Drafter(MockProvider("Startup pitch text"))
+        result = await drafter.generate_cover_letter(
+            "Profile", "YC W26", "Y Combinator", ["Python", "AI"], category="startup",
+        )
+        assert "Startup pitch text" in result
+
+    @pytest.mark.asyncio
+    async def test_draft_grant_proposal(self):
+        drafter = Drafter(MockProvider("Grant proposal text"))
+        result = await drafter.generate_cover_letter(
+            "Profile", "NSF GRFP", "NSF", ["Python", "AI"], category="grant",
+        )
+        assert "Grant proposal text" in result
+
+    @pytest.mark.asyncio
+    async def test_draft_fallback_to_job(self):
+        drafter = Drafter(MockProvider("Fallback text"))
+        result = await drafter.generate_cover_letter(
+            "Profile", "Thing", "Org", ["Skill"], category="unknown",
+        )
+        assert "Fallback text" in result
