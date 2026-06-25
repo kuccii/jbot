@@ -94,7 +94,7 @@ class Repository:
 
     def get_stats_by_category(self) -> dict:
         with Session(self.engine) as session:
-            cats = ["job", "startup", "grant"]
+            cats = [row[0] for row in session.query(Opportunity.category).distinct() if row[0]]
             result = {}
             for cat in cats:
                 result[cat] = session.query(Opportunity).filter(
