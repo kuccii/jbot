@@ -32,6 +32,7 @@ def get_repo() -> Repository:
 async def home(request: Request):
     repo = get_repo()
     stats = repo.get_stats()
+    stats["by_category"] = repo.get_stats_by_category()
     logs = repo.get_audit_logs(limit=20)
     return templates.TemplateResponse(request, "home.html", {
         "stats": stats, "activity": logs, "page": "home", "last_run": _last_run,
