@@ -1,10 +1,11 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
+from job_bot.discovery.utils import extract_deadline, is_expired
 
 # ── Domain → category mapping ──────────────────────────────────────────────
 # Entries whose domain contains any of these strings get the mapped category.
@@ -82,6 +83,7 @@ class CompanyPagesScraper(BaseScraper):
 
     async def discover(self, criteria: SearchCriteria) -> list[Opportunity]:
         opportunities: list[Opportunity] = []
+        seen_urls: set[str] = set()
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             for entry in self.entries:
                 url = self._resolve_url(entry)
@@ -100,9 +102,11 @@ class CompanyPagesScraper(BaseScraper):
                         str(resp.url), page_title, page_text
                     )
 
-                    seen: set[tuple[str, str]] = set()
                     links_found = 0
 
+                    # ════════════════════════════════════════════════════════
+                    # Mode A: <a> tag discovery (all categories)
+                    # ════════════════════════════════════════════════════════
                     for a_tag in soup.find_all("a", href=True):
                         text = a_tag.get_text(strip=True)
                         href = a_tag["href"]
@@ -124,11 +128,23 @@ class CompanyPagesScraper(BaseScraper):
                             else resp.url.join(href).href
                         )
 
-                        # --- Dedup by (normalised text, full URL) -----------
-                        key = (text.strip().lower(), full_url)
-                        if key in seen:
+                        # --- Dedup by URL ------------------------------------
+                        if full_url in seen_urls:
                             continue
-                        seen.add(key)
+                        seen_urls.add(full_url)
+
+                        # --- Deadline extraction -----------------------------
+                        # Combine link text + parent text + sibling text
+                        parent = a_tag.parent
+                        sibling_text = ""
+                        if parent:
+                            sibling_text = parent.get_text(separator=" ", strip=True)
+                        combined_text = f"{text} {sibling_text}"
+                        deadline = extract_deadline(combined_text)
+
+                        # --- Skip expired (if deadline found and past) ------
+                        if is_expired(deadline):
+                            continue
 
                         opportunities.append(Opportunity(
                             title=text[:200],
@@ -137,8 +153,28 @@ class CompanyPagesScraper(BaseScraper):
                             description=page_title,
                             source="company_pages",
                             category=category,
+                            deadline=deadline,
                         ))
                         links_found += 1
+
+                    # ════════════════════════════════════════════════════════
+                    # Mode B: article-card discovery for grant-type sites
+                    # ════════════════════════════════════════════════════════
+                    if category == "grant":
+                        articles = self._find_article_cards(soup)
+                        for article in articles:
+                            opp = self._article_to_opportunity(
+                                article, entry, str(resp.url), page_title
+                            )
+                            if opp is None:
+                                continue
+                            if opp.url in seen_urls:
+                                continue
+                            if is_expired(opp.deadline):
+                                continue
+                            seen_urls.add(opp.url)
+                            opportunities.append(opp)
+                            links_found += 1
 
                     # --- Intelligent fallback --------------------------------
                     if not links_found:
@@ -154,3 +190,56 @@ class CompanyPagesScraper(BaseScraper):
                 except Exception:
                     pass
         return opportunities
+
+    # ── Article-card helpers (Mode B) ─────────────────────────────────────
+
+    @staticmethod
+    def _find_article_cards(soup: BeautifulSoup) -> list[BeautifulSoup]:
+        """Return list of tags that look like article/card listings."""
+        articles: list[BeautifulSoup] = []
+        articles.extend(soup.find_all("article"))
+
+        card_classes = ("post", "entry", "listing", "card")
+        for div in soup.find_all("div", class_=True):
+            cls_str = " ".join(div.get("class", [])).lower()
+            if any(cc in cls_str for cc in card_classes):
+                if div.find(["h1", "h2", "h3", "h4"]) and div.find("a", href=True):
+                    articles.append(div)
+        return articles
+
+    @staticmethod
+    def _article_to_opportunity(
+        article: BeautifulSoup, company: str, base_url: str, page_title: str
+    ) -> Opportunity | None:
+        """Extract an Opportunity from a single article-card element."""
+        heading = article.find(["h1", "h2", "h3", "h4"])
+        if not heading:
+            return None
+        link = heading.find("a", href=True) or article.find("a", href=True)
+        if not link:
+            return None
+
+        title = heading.get_text(strip=True)
+        if not title or len(title) < 5:
+            return None
+
+        href = link.get("href", "")
+        full_url = href if href.startswith("http") else urljoin(base_url, href)
+
+        desc_tag = article.find("p") or article.find(
+            class_=re.compile(r"excerpt|summary", re.IGNORECASE)
+        )
+        description = desc_tag.get_text(strip=True) if desc_tag else page_title
+
+        article_text = article.get_text(separator=" ", strip=True)
+        deadline = extract_deadline(article_text)
+
+        return Opportunity(
+            title=title[:500],
+            company=company,
+            url=full_url,
+            description=description[:2000],
+            source="company_pages",
+            category="grant",
+            deadline=deadline,
+        )

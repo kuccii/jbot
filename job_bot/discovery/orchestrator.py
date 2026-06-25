@@ -1,5 +1,6 @@
 from job_bot.discovery.base import SearchCriteria
 from job_bot.discovery.registry import list_scrapers, get_scraper
+from job_bot.discovery.utils import is_expired
 from job_bot.database.repository import Repository
 from job_bot.utils.logging import get_logger
 
@@ -29,6 +30,10 @@ class DiscoveryOrchestrator:
                     scraper.set_companies(self.config.get("companies", []))
                 opps = await scraper.discover(criteria)
                 for opp in opps:
+                    # Safety-net: skip expired listings even if the scraper
+                    # forgot to filter them out.
+                    if is_expired(opp.deadline):
+                        continue
                     oid = self.repo.add_opportunity({
                         "title": opp.title,
                         "company": opp.company,
@@ -37,6 +42,7 @@ class DiscoveryOrchestrator:
                         "source": opp.source,
                         "remote": opp.remote,
                         "category": opp.category,
+                        "deadline": opp.deadline,
                     })
                     if oid:
                         all_ops.append(opp)
