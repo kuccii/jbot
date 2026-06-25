@@ -19,5 +19,6 @@ class CompanyPagesScraper(BaseScraper):
                 url=f"https://{company}.com/careers",
                 source="company_pages",
                 description=f"Career page for {company}. Check for open positions.",
+                category="job",
             ))
         return opportunities

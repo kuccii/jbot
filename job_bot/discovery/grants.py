@@ -16,5 +16,6 @@ class GrantScraper(BaseScraper):
                 url=url,
                 source=source,
                 description=f"Visit {url} for current grant opportunities matching your skills.",
+                category="grant",
             ))
         return opportunities

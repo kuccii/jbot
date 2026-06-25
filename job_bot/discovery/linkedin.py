@@ -13,5 +13,6 @@ class LinkedInScraper(BaseScraper):
                 url=f"https://www.linkedin.com/jobs/search/?keywords={skill}+contract",
                 source="linkedin",
                 description=f"LinkedIn jobs for {skill} contract positions.",
+                category="job",
             ))
         return opportunities

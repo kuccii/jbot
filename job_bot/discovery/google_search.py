@@ -30,5 +30,6 @@ class GoogleSearchScraper(BaseScraper):
                         url=item.get("link", ""),
                         description=item.get("snippet", ""),
                         source="google_search",
+                        category="job",
                     ))
             return results

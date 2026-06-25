@@ -24,6 +24,10 @@ class Opportunity:
     location: str = ""
     remote: str = ""
     score: float = 0.0
+    category: str = "job"
+    program: str = ""
+    stage: str = ""
+    amount: str = ""
 
 
 class BaseScraper(ABC):
