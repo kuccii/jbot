@@ -1,0 +1,13 @@
+services:
+  job-bot:
+    build: .
+    container_name: job-bot
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./data:/app/data
+      - ./profile:/app/profile
+    environment:
+      - TZ=UTC

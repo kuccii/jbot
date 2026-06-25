@@ -31,10 +31,11 @@ class Repository:
             return record.id
 
     def get_pending_opportunities(self, min_score: float = 0.0) -> list:
+        from sqlalchemy import or_
         with Session(self.engine) as session:
             return session.query(Opportunity).filter(
                 Opportunity.status == "new",
-                Opportunity.score >= min_score,
+                or_(Opportunity.score.is_(None), Opportunity.score >= min_score),
             ).all()
 
     def update_opportunity_status(self, opp_id: int, status: str) -> bool:
@@ -60,10 +61,30 @@ class Repository:
             session.add(record)
             session.commit()
 
+    def get_audit_logs(self, limit: int = 20) -> list:
+        with Session(self.engine) as session:
+            return session.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()
+
+    def get_daily_trend(self, days: int = 14) -> dict:
+        labels = []
+        values = []
+        from datetime import datetime, timedelta
+        from sqlalchemy import func
+        with Session(self.engine) as session:
+            for i in range(days - 1, -1, -1):
+                date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+                labels.append(date)
+                count = session.query(Opportunity).filter(
+                    func.date(Opportunity.created_at) == date
+                ).count()
+                values.append(count)
+        return {"labels": labels, "values": values}
+
     def get_stats(self) -> dict:
         with Session(self.engine) as session:
             return {
                 "total": session.query(Opportunity).count(),
                 "new": session.query(Opportunity).filter_by(status="new").count(),
                 "applied": session.query(Opportunity).filter_by(status="applied").count(),
+                "rejected": session.query(Opportunity).filter_by(status="rejected").count(),
             }

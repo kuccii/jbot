@@ -15,9 +15,13 @@ class Pipeline:
     def __init__(self, config: Config, repo: Repository):
         self.config = config
         self.repo = repo
+        api_key = getattr(config.llm, f"{config.llm.provider}_api_key", "")
+        base_url = getattr(config.llm, f"{config.llm.provider}_base_url", "http://localhost:11434")
         provider = create_provider(
             config.llm.provider,
             model=config.llm.model,
+            api_key=api_key,
+            base_url=base_url,
         )
         self.matcher = Matcher(provider)
         self.drafter = Drafter(provider)

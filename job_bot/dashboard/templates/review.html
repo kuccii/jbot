@@ -3,57 +3,139 @@
 {% block content %}
 <div class="page-title">⭐ Review Queue</div>
 
-<div style="margin-bottom: 1rem;">
-    <button class="btn btn-success" onclick="bulkApprove()">Approve Top 5</button>
+<div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+    <button class="btn btn-success" onclick="confirmBulkApprove()" id="btn-bulk">Approve Top 5</button>
+    <button class="btn btn-sm btn-primary" onclick="location.reload()">🔄 Refresh</button>
+    <span id="bulk-count" style="color: #999; font-size: 0.85rem;">{{ reviews|length }} pending</span>
 </div>
 
 <div id="review-cards">
     {% for r in reviews %}
-    <div class="card" id="review-{{ r.id }}">
+    <div class="card" id="review-{{ r.id }}" data-opp-id="{{ r.id }}">
         <div class="card-header">{{ r.title }} @ {{ r.company }}</div>
         <div class="card-meta">
             Score: <span class="{% if r.score >= 0.7 %}score-high{% elif r.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
                 {{ "%.0f"|format(r.score * 100) }}%
             </span>
-            | Source: {{ r.source }} | ID: {{ r.id }}
+            | Source: {{ r.source }}
+        </div>
+        <div style="margin-bottom: 0.75rem;">
+            <button class="btn btn-sm btn-primary" onclick="toggleDetails({{ r.id }})" id="btn-details-{{ r.id }}">📄 Show Details</button>
+            <div id="details-{{ r.id }}" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; max-height: 200px; overflow-y: auto;"></div>
         </div>
         <div class="form-group">
             <label>Cover Letter</label>
             <textarea id="cover-{{ r.id }}" rows="4">{{ r.cover_letter }}</textarea>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-success btn-sm" onclick="approve({{ r.id }})">✅ Approve</button>
-            <button class="btn btn-sm btn-primary" onclick="approve({{ r.id }})">💾 Edit & Approve</button>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn btn-success btn-sm" onclick="approve({{ r.id }})">✅ Approve & Send</button>
             <button class="btn btn-danger btn-sm" onclick="reject({{ r.id }})">❌ Reject</button>
+            <span id="feedback-{{ r.id }}" style="font-size: 0.85rem;"></span>
         </div>
     </div>
     {% else %}
     <div class="card">
-        <p style="color: #999; text-align: center;">No pending reviews. Run discovery first!</p>
+        <p style="color: #999; text-align: center; padding: 2rem;">
+            No pending reviews.
+            <a href="/" style="color: #4361ee;">Run Discovery</a> from the dashboard to find opportunities.
+        </p>
     </div>
     {% endfor %}
+</div>
+
+<div class="modal" id="confirm-modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3>Approve top 5?</h3>
+        <p style="margin: 1rem 0; color: #666;">This will approve and send the top 5 pending opportunities immediately.</p>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button class="btn" onclick="closeConfirm()" style="background: #eee;">Cancel</button>
+            <button class="btn btn-success" onclick="bulkApprove()">Yes, Approve</button>
+        </div>
+    </div>
 </div>
 
 <script>
 function approve(id) {
     const cover = document.getElementById('cover-' + id).value;
+    const btn = document.querySelector('#review-' + id + ' .btn-success');
+    const feedback = document.getElementById('feedback-' + id);
+    btn.disabled = true;
+    feedback.textContent = '⏳ Sending...';
+    feedback.style.color = '#999';
     fetch('/api/review/' + id + '/approve', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({cover_letter: cover})
     }).then(r => r.json()).then(data => {
-        if (data.success) document.getElementById('review-' + id).style.opacity = '0.3';
+        if (data.success) {
+            document.getElementById('review-' + id).style.opacity = '0.4';
+            document.getElementById('review-' + id).style.pointerEvents = 'none';
+            feedback.textContent = '✅ Approved';
+            feedback.style.color = '#2e7d32';
+            updateCount();
+        } else {
+            feedback.textContent = '❌ Error';
+            feedback.style.color = '#c62828';
+            btn.disabled = false;
+        }
+    }).catch(() => {
+        feedback.textContent = '❌ Network error';
+        feedback.style.color = '#c62828';
+        btn.disabled = false;
     });
 }
 function reject(id) {
+    const feedback = document.getElementById('feedback-' + id);
+    if (!confirm('Reject this opportunity?')) return;
     fetch('/api/review/' + id + '/reject', {method: 'POST'}).then(r => r.json()).then(data => {
-        if (data.success) document.getElementById('review-' + id).style.display = 'none';
+        if (data.success) {
+            document.getElementById('review-' + id).style.opacity = '0.3';
+            document.getElementById('review-' + id).style.pointerEvents = 'none';
+            feedback.textContent = '❌ Rejected';
+            feedback.style.color = '#c62828';
+            updateCount();
+        }
     });
 }
+function toggleDetails(id) {
+    const details = document.getElementById('details-' + id);
+    const btn = document.getElementById('btn-details-' + id);
+    if (details.style.display === 'none') {
+        details.style.display = 'block';
+        btn.textContent = '📄 Hide Details';
+        if (!details.dataset.loaded) {
+            fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
+                let html = '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
+                html += '<p><strong>Description:</strong> ' + (opp.description || 'No description') + '</p>';
+                html += '<a href="' + opp.url + '" target="_blank" class="btn btn-sm btn-primary" style="margin-top: 0.5rem;">Open Link</a>';
+                details.innerHTML = html;
+                details.dataset.loaded = '1';
+            });
+        }
+    } else {
+        details.style.display = 'none';
+        btn.textContent = '📄 Show Details';
+    }
+}
+function confirmBulkApprove() {
+    document.getElementById('confirm-modal').classList.add('open');
+}
+function closeConfirm() {
+    document.getElementById('confirm-modal').classList.remove('open');
+}
+document.getElementById('confirm-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeConfirm();
+});
 function bulkApprove() {
-    document.querySelectorAll('[id^="review-"]').forEach((el, i) => {
+    closeConfirm();
+    const visible = document.querySelectorAll('#review-cards > .card:not([style*="pointer-events: none"])');
+    visible.forEach((el, i) => {
         if (i < 5) approve(el.id.replace('review-', ''));
     });
+}
+function updateCount() {
+    const visible = document.querySelectorAll('#review-cards > .card:not([style*="pointer-events: none"])').length;
+    document.getElementById('bulk-count').textContent = visible + ' pending';
 }
 </script>
 {% endblock %}

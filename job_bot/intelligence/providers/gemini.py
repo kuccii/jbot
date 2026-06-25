@@ -5,7 +5,7 @@ from job_bot.intelligence.providers.base import LLMProvider
 class GeminiProvider(LLMProvider):
     name = "gemini"
 
-    def __init__(self, model: str = "gemini-1.5-flash", api_key: str = ""):
+    def __init__(self, model: str = "gemini-1.5-flash", api_key: str = "", **kwargs):
         self.model = model
         self.api_key = api_key
         self.base_url = "https://generativelanguage.googleapis.com/v1beta"

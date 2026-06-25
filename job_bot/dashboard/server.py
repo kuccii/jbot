@@ -1,4 +1,6 @@
+import asyncio
 from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Session
 from job_bot.config import load_config
 from job_bot.database.repository import init_db, Repository
 from job_bot.database.models import Opportunity
+from job_bot.pipeline import Pipeline
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -15,6 +18,8 @@ STATIC_DIR = Path(__file__).parent / "static"
 app = FastAPI(title="Job Bot Dashboard")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+_last_run = {"discovery": None, "review": None, "status": "idle"}
 
 
 def get_repo() -> Repository:
@@ -27,23 +32,84 @@ def get_repo() -> Repository:
 async def home(request: Request):
     repo = get_repo()
     stats = repo.get_stats()
+    logs = repo.get_audit_logs(limit=20)
     return templates.TemplateResponse(request, "home.html", {
-        "stats": stats,
-        "activity": [],
-        "page": "home",
+        "stats": stats, "activity": logs, "page": "home", "last_run": _last_run,
     })
+
+
+@app.post("/api/discover")
+async def api_discover():
+    cfg = load_config()
+    repo = get_repo()
+    pipeline = Pipeline(cfg, repo)
+    _last_run["discovery"] = "running"
+    _last_run["status"] = "running"
+    asyncio.create_task(_run_discovery(pipeline, repo))
+    return {"status": "started"}
+
+
+@app.post("/api/review")
+async def api_review():
+    cfg = load_config()
+    repo = get_repo()
+    pipeline = Pipeline(cfg, repo)
+    _last_run["review"] = "running"
+    _last_run["status"] = "running"
+    asyncio.create_task(_run_review(pipeline, repo))
+    return {"status": "started"}
+
+
+async def _run_discovery(pipeline: Pipeline, repo: Repository):
+    global _last_run
+    try:
+        results = await pipeline.discover()
+        _last_run["discovery"] = f"Found {len(results)} opportunities"
+        _last_run["status"] = "idle"
+        repo.log_audit("discovery_complete", "pipeline", {"count": len(results)})
+    except Exception as e:
+        _last_run["discovery"] = f"Error: {e}"
+        _last_run["status"] = "idle"
+        repo.log_audit("discovery_error", "pipeline", {"error": str(e)})
+
+
+async def _run_review(pipeline: Pipeline, repo: Repository):
+    global _last_run
+    try:
+        reviews = await pipeline.review()
+        _last_run["review"] = f"Reviewed {len(reviews)} opportunities"
+        _last_run["status"] = "idle"
+        repo.log_audit("review_complete", "pipeline", {"count": len(reviews)})
+    except Exception as e:
+        _last_run["review"] = f"Error: {e}"
+        _last_run["status"] = "idle"
+        repo.log_audit("review_error", "pipeline", {"error": str(e)})
+
+
+@app.get("/api/stats")
+async def api_stats():
+    repo = get_repo()
+    stats = repo.get_stats()
+    stats["rejected"] = stats.get("rejected", 0)
+    return stats
+
+
+@app.get("/api/status")
+async def api_status():
+    return _last_run
+
+
+@app.get("/api/activity")
+async def api_activity():
+    repo = get_repo()
+    logs = repo.get_audit_logs(limit=20)
+    return [{"action": l.action, "component": l.component, "created_at": str(l.created_at)} for l in logs]
 
 
 @app.get("/api/stats/daily")
 async def daily_stats():
-    labels = []
-    values = []
-    from datetime import datetime, timedelta
-    for i in range(13, -1, -1):
-        date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
-        labels.append(date)
-        values.append(0)
-    return {"labels": labels, "values": values}
+    repo = get_repo()
+    return repo.get_daily_trend(days=14)
 
 
 @app.get("/opportunities", response_class=HTMLResponse)
@@ -130,8 +196,14 @@ async def applications_page(request: Request):
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     cfg = load_config()
+    config_text = Path.cwd().joinpath("config.yaml").read_text(encoding="utf-8") if Path.cwd().joinpath("config.yaml").exists() else ""
     return templates.TemplateResponse(request, "settings.html", {
-        "config": cfg, "page": "settings",
+        "config": cfg, "page": "settings", "config_text": config_text,
+        "has_gemini_key": bool(cfg.llm.gemini_api_key),
+        "has_nim_key": bool(cfg.llm.nim_api_key),
+        "has_opencode_key": bool(cfg.llm.opencode_api_key),
+        "has_serper_key": bool(cfg.discovery.serper_api_key),
+        "has_whatsapp_token": bool(cfg.notifications.whatsapp.token),
     })
 
 
@@ -141,20 +213,52 @@ async def save_settings(request: Request):
     form = await request.form()
     cfg.profile.name = form.get("name", "")
     cfg.profile.email = form.get("email", "")
+    cfg.profile.phone = form.get("phone", "")
     cfg.profile.skills = [s.strip() for s in form.get("skills", "").split(",") if s.strip()]
     cfg.llm.provider = form.get("llm_provider", "ollama")
     cfg.llm.model = form.get("llm_model", "llama3.1:8b")
-    cfg.discovery.interval_hours = int(form.get("interval_hours", 24))
+    cfg.llm.embedding_model = form.get("embedding_model", "nomic-embed-text")
+    cfg.llm.temperature = float(form.get("temperature", 0.3))
+    cfg.llm.ollama_base_url = form.get("ollama_base_url", "http://localhost:11434")
+    gemini_key = form.get("gemini_api_key", "")
+    if gemini_key:
+        cfg.llm.gemini_api_key = gemini_key
+    nim_key = form.get("nim_api_key", "")
+    if nim_key:
+        cfg.llm.nim_api_key = nim_key
+    opencode_key = form.get("opencode_api_key", "")
+    if opencode_key:
+        cfg.llm.opencode_api_key = opencode_key
+    cfg.llm.opencode_base_url = form.get("opencode_base_url", "https://opencode.ai/zen/v1")
+    serper_key = form.get("serper_api_key", "")
+    if serper_key:
+        cfg.discovery.serper_api_key = serper_key
+    cfg.discovery.grants_keywords = [k.strip() for k in form.get("grants_keywords", "").split(",") if k.strip()]
     cfg.discovery.companies = [c.strip() for c in form.get("companies", "").split("\n") if c.strip()]
+    cfg.discovery.sources["google_search"] = form.get("source_google_search") == "on"
+    cfg.discovery.sources["linkedin"] = form.get("source_linkedin") == "on"
+    cfg.discovery.sources["grants"] = form.get("source_grants") == "on"
+    cfg.application.human_approval = form.get("human_approval") == "on"
+    cfg.application.max_applications_per_run = int(form.get("max_applications_per_run", 5))
     cfg.notifications.whatsapp.enabled = form.get("whatsapp_enabled") == "on"
+    cfg.notifications.whatsapp.phone_number_id = form.get("whatsapp_phone_number_id", "")
+    whatsapp_token = form.get("whatsapp_token", "")
+    if whatsapp_token:
+        cfg.notifications.whatsapp.token = whatsapp_token
     cfg.notifications.whatsapp.recipient = form.get("whatsapp_recipient", "")
     import yaml
     with open(Path.cwd() / "config.yaml", "w") as f:
         yaml.dump(cfg.model_dump(), f, default_flow_style=False)
     repo = get_repo()
     repo.log_audit("settings_updated", "dashboard", {})
+    config_text = Path.cwd().joinpath("config.yaml").read_text(encoding="utf-8")
     return templates.TemplateResponse(request, "settings.html", {
-        "config": cfg, "page": "settings", "saved": True,
+        "config": cfg, "page": "settings", "saved": True, "config_text": config_text,
+        "has_gemini_key": bool(cfg.llm.gemini_api_key),
+        "has_nim_key": bool(cfg.llm.nim_api_key),
+        "has_opencode_key": bool(cfg.llm.opencode_api_key),
+        "has_serper_key": bool(cfg.discovery.serper_api_key),
+        "has_whatsapp_token": bool(cfg.notifications.whatsapp.token),
     })
 
 

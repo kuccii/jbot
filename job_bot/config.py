@@ -12,6 +12,12 @@ class LLMConfig(BaseModel):
     model: str = "llama3.1:8b"
     embedding_model: str = "nomic-embed-text"
     temperature: float = 0.3
+    gemini_api_key: str = ""
+    nim_api_key: str = ""
+    nim_base_url: str = "https://api.nvcf.nvidia.com/v2/llm"
+    opencode_api_key: str = ""
+    opencode_base_url: str = "https://opencode.ai/zen/v1"
+    ollama_base_url: str = "http://localhost:11434"
 
 
 class DiscoveryConfig(BaseModel):

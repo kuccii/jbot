@@ -17,8 +17,10 @@
         <option value="rejected">Rejected</option>
     </select>
     <input type="text" id="filter-search" placeholder="Search by title...">
+    <button class="btn btn-sm btn-primary" onclick="location.reload()" title="Refresh">🔄</button>
 </div>
 
+{% if opportunities %}
 <table id="opps-table">
     <thead>
         <tr>
@@ -33,7 +35,10 @@
     </thead>
     <tbody>
         {% for opp in opportunities %}
-        <tr onclick="showDetail({{ opp.id }})" style="cursor: pointer;">
+        <tr class="opp-row" onclick="showDetail({{ opp.id }})" style="cursor: pointer;"
+            data-source="{{ opp.source or '' }}"
+            data-status="{{ opp.status or 'new' }}"
+            data-title="{{ opp.title or '' }}">
             <td>{{ opp.title[:60] if opp.title else '' }}</td>
             <td>{{ opp.company }}</td>
             <td><span class="status-badge status-new">{{ opp.source }}</span></td>
@@ -47,6 +52,14 @@
         {% endfor %}
     </tbody>
 </table>
+{% else %}
+<div class="card">
+    <p style="color: #999; text-align: center; padding: 2rem;">
+        No opportunities yet.
+        <a href="/" style="color: #4361ee;">Run Discovery</a> from the dashboard to populate this list.
+    </p>
+</div>
+{% endif %}
 
 <div class="modal" id="detail-modal">
     <div class="modal-content">
@@ -77,5 +90,20 @@ function closeModal() { document.getElementById('detail-modal').classList.remove
 document.getElementById('detail-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
+
+function applyFilters() {
+    const source = document.getElementById('filter-source').value.toLowerCase();
+    const status = document.getElementById('filter-status').value.toLowerCase();
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    document.querySelectorAll('.opp-row').forEach(row => {
+        const matchesSource = !source || row.dataset.source.toLowerCase().includes(source);
+        const matchesStatus = !status || row.dataset.status.toLowerCase() === status;
+        const matchesSearch = !search || row.dataset.title.toLowerCase().includes(search);
+        row.style.display = matchesSource && matchesStatus && matchesSearch ? '' : 'none';
+    });
+}
+document.getElementById('filter-source').addEventListener('change', applyFilters);
+document.getElementById('filter-status').addEventListener('change', applyFilters);
+document.getElementById('filter-search').addEventListener('input', applyFilters);
 </script>
 {% endblock %}

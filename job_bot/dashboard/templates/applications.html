@@ -3,6 +3,12 @@
 {% block content %}
 <div class="page-title">📨 Applications</div>
 
+<div class="filters">
+    <input type="text" id="filter-search" placeholder="Search by company or role...">
+    <button class="btn btn-sm btn-primary" onclick="location.reload()" title="Refresh">🔄</button>
+</div>
+
+{% if applications %}
 <table>
     <thead>
         <tr>
@@ -15,7 +21,9 @@
     </thead>
     <tbody>
         {% for a in applications %}
-        <tr>
+        <tr class="app-row"
+            data-company="{{ a.company|lower }}"
+            data-role="{{ a.role|lower }}">
             <td>{{ a.company }}</td>
             <td>{{ a.role }}</td>
             <td><span class="status-badge status-new">{{ a.platform }}</span></td>
@@ -25,4 +33,23 @@
         {% endfor %}
     </tbody>
 </table>
+{% else %}
+<div class="card">
+    <p style="color: #999; text-align: center; padding: 2rem;">
+        No applications yet.
+        <a href="/" style="color: #4361ee;">Run Discovery</a> and approve opportunities from the Review Queue.
+    </p>
+</div>
+{% endif %}
+
+<script>
+function applyFilter() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    document.querySelectorAll('.app-row').forEach(row => {
+        const match = row.dataset.company.includes(search) || row.dataset.role.includes(search);
+        row.style.display = match ? '' : 'none';
+    });
+}
+document.getElementById('filter-search').addEventListener('input', applyFilter);
+</script>
 {% endblock %}

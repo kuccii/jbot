@@ -10,6 +10,9 @@ llm:
   model: llama3.1:8b
   embedding_model: nomic-embed-text
   temperature: 0.3
+  gemini_api_key: ""
+  nim_api_key: ""
+  ollama_base_url: "http://localhost:11434"
 
 discovery:
   interval_hours: 24

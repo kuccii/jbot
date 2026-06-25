@@ -5,7 +5,7 @@ from job_bot.intelligence.providers.base import LLMProvider
 class OllamaProvider(LLMProvider):
     name = "ollama"
 
-    def __init__(self, model: str = "llama3.1:8b", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "llama3.1:8b", base_url: str = "http://localhost:11434", **kwargs):
         self.model = model
         self.base_url = base_url
 

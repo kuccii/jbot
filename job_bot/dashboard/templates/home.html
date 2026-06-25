@@ -3,76 +3,168 @@
 {% block content %}
 <div class="page-title">📊 Dashboard</div>
 
-<div class="stats-grid">
+{% if stats.total == 0 and stats.applied == 0 %}
+<div class="card" style="background: #e3f2fd; border: 1px solid #1565c0; margin-bottom: 1rem;">
+    <div class="card-header" style="color: #1565c0;">🚀 Getting Started</div>
+    <ol style="margin: 0.5rem 0 0 1.5rem; color: #1a1a2e; line-height: 2;">
+        <li><strong>Configure</strong> your profile and API keys in <a href="/settings" style="color: #4361ee;">Settings</a></li>
+        <li><strong>Run Discovery</strong> below to find opportunities matching your skills</li>
+        <li><strong>Review</strong> matched opportunities in the <a href="/review" style="color: #4361ee;">Review Queue</a></li>
+        <li><strong>Approve</strong> applications — they'll be submitted automatically</li>
+    </ol>
+</div>
+{% endif %}
+
+<div class="stats-grid" id="stats-grid">
     <div class="stat-card">
-        <div class="value">{{ stats.total }}</div>
+        <div class="value" id="stat-total">{{ stats.total }}</div>
         <div class="label">Total Discovered</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.new }}</div>
+        <div class="value" id="stat-new">{{ stats.new }}</div>
         <div class="label">New (Pending)</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.applied }}</div>
+        <div class="value" id="stat-applied">{{ stats.applied }}</div>
         <div class="label">Applications Sent</div>
     </div>
     <div class="stat-card">
-        <div class="value">{{ stats.get('rejected', 0) }}</div>
+        <div class="value" id="stat-rejected">{{ stats.get('rejected', 0) }}</div>
         <div class="label">Rejected</div>
     </div>
 </div>
 
 <div class="card" style="margin-bottom: 1rem;">
-    <div class="card-header">⚡ Quick Actions</div>
-    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-        <a href="/opportunities" class="btn btn-primary">View Opportunities</a>
-        <a href="/review" class="btn btn-success">Review Queue</a>
+    <div class="card-header">⚡ Run Pipeline</div>
+    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="runDiscovery()" id="btn-discover">🔍 Run Discovery</button>
+        <button class="btn btn-success" onclick="runReview()" id="btn-review">⭐ Run Review</button>
+        <span id="run-status" style="color: #999; font-size: 0.85rem;"></span>
     </div>
+    <div id="run-result" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
 </div>
 
-<div class="card">
+<div class="card" style="margin-bottom: 1rem;">
     <div class="card-header">📈 Discovery Trend (Last 14 Days)</div>
     <canvas id="trendChart" height="100"></canvas>
 </div>
 
 <div class="card">
     <div class="card-header">🕐 Recent Activity</div>
-    <ul style="list-style: none; padding: 0;">
+    <ul id="activity-list" style="list-style: none; padding: 0;">
         {% for entry in activity %}
         <li style="padding: 0.5rem 0; border-bottom: 1px solid #eee; font-size: 0.9rem;">
-            <span style="color: #666;">{{ entry.created_at[:16] if entry.created_at else '' }}</span>
+            <span style="color: #666;">{{ entry.created_at.strftime('%Y-%m-%d %H:%M') if entry.created_at else '' }}</span>
             — <strong>{{ entry.action }}</strong>
             <span style="color: #999;">({{ entry.component }})</span>
         </li>
         {% else %}
-        <li style="color: #999;">No recent activity</li>
+        <li id="no-activity" style="color: #999;">No recent activity</li>
         {% endfor %}
     </ul>
 </div>
 
 <script>
-fetch('/api/stats/daily')
-    .then(r => r.json())
-    .then(data => {
-        new Chart(document.getElementById('trendChart'), {
-            type: 'line',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Opportunities Found',
-                    data: data.values,
-                    borderColor: '#4361ee',
-                    fill: true,
-                    backgroundColor: 'rgba(67,97,238,0.1)',
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-            }
+function runDiscovery() {
+    document.getElementById('btn-discover').disabled = true;
+    document.getElementById('run-status').textContent = '⏳ Running discovery...';
+    document.getElementById('run-result').innerHTML = '';
+    fetch('/api/discover', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => pollStatus());
+}
+
+function runReview() {
+    document.getElementById('btn-review').disabled = true;
+    document.getElementById('run-status').textContent = '⏳ Running review...';
+    document.getElementById('run-result').innerHTML = '';
+    fetch('/api/review', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => pollStatus());
+}
+
+function pollStatus() {
+    const interval = setInterval(() => {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'idle') {
+                    clearInterval(interval);
+                    document.getElementById('btn-discover').disabled = false;
+                    document.getElementById('btn-review').disabled = false;
+                    const msg = [];
+                    if (data.discovery) msg.push('Discovery: ' + data.discovery);
+                    if (data.review) msg.push('Review: ' + data.review);
+                    document.getElementById('run-result').innerHTML = '✅ ' + msg.join(' | ');
+                    document.getElementById('run-status').textContent = '';
+                    refreshStats();
+                    refreshActivity();
+                } else {
+                    document.getElementById('run-status').textContent = '⏳ Running...';
+                }
+            });
+    }, 2000);
+}
+
+function refreshStats() {
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(stats => {
+            document.getElementById('stat-total').textContent = stats.total;
+            document.getElementById('stat-new').textContent = stats.new;
+            document.getElementById('stat-applied').textContent = stats.applied;
+            document.getElementById('stat-rejected').textContent = stats.rejected || 0;
         });
-    });
+}
+
+function refreshActivity() {
+    fetch('/api/activity')
+        .then(r => r.json())
+        .then(logs => {
+            const list = document.getElementById('activity-list');
+            list.innerHTML = '';
+            if (logs.length === 0) {
+                list.innerHTML = '<li style="color: #999;">No recent activity</li>';
+                return;
+            }
+            logs.forEach(l => {
+                const li = document.createElement('li');
+                li.style = 'padding: 0.5rem 0; border-bottom: 1px solid #eee; font-size: 0.9rem;';
+                li.innerHTML = `<span style="color: #666;">${(l.created_at||'').slice(0,16)}</span> — <strong>${l.action}</strong> <span style="color: #999;">(${l.component})</span>`;
+                list.appendChild(li);
+            });
+        });
+}
+
+function initChart() {
+    if (typeof Chart === 'undefined') {
+        document.getElementById('trendChart').outerHTML = '<p style="color: #999; text-align: center;">Chart library not available. Run discovery to populate the dashboard.</p>';
+        return;
+    }
+    fetch('/api/stats/daily')
+        .then(r => r.json())
+        .then(data => {
+            new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Opportunities Found',
+                        data: data.values,
+                        borderColor: '#4361ee',
+                        fill: true,
+                        backgroundColor: 'rgba(67,97,238,0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+        });
+}
+initChart();
 </script>
 {% endblock %}
