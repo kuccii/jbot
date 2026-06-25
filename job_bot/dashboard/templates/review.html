@@ -3,6 +3,13 @@
 {% block content %}
 <div class="page-title">⭐ Review Queue</div>
 
+<div class="tabs" style="display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0;">
+    <a href="/review" class="tab {{ 'active' if current_category == 'all' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'all' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'all' else '#666' }}; margin-bottom: -2px; font-weight: {{ '600' if current_category == 'all' else '400' }};">All</a>
+    <a href="/review/job" class="tab {{ 'active' if current_category == 'job' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'job' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'job' else '#666' }}; margin-bottom: -2px;">💼 Jobs</a>
+    <a href="/review/startup" class="tab {{ 'active' if current_category == 'startup' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'startup' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'startup' else '#666' }}; margin-bottom: -2px;">🚀 Startups</a>
+    <a href="/review/grant" class="tab {{ 'active' if current_category == 'grant' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'grant' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'grant' else '#666' }}; margin-bottom: -2px;">🎯 Grants</a>
+</div>
+
 <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
     <button class="btn btn-success" onclick="confirmBulkApprove()" id="btn-bulk">Approve Top 5</button>
     <button class="btn btn-sm btn-primary" onclick="location.reload()">🔄 Refresh</button>

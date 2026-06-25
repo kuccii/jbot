@@ -3,6 +3,13 @@
 {% block content %}
 <div class="page-title">📋 Opportunities</div>
 
+<div class="tabs" style="display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0;">
+    <a href="/opportunities" class="tab {{ 'active' if current_category == 'all' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'all' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'all' else '#666' }}; margin-bottom: -2px; font-weight: {{ '600' if current_category == 'all' else '400' }};">All</a>
+    <a href="/opportunities/job" class="tab {{ 'active' if current_category == 'job' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'job' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'job' else '#666' }}; margin-bottom: -2px;">💼 Jobs</a>
+    <a href="/opportunities/startup" class="tab {{ 'active' if current_category == 'startup' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'startup' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'startup' else '#666' }}; margin-bottom: -2px;">🚀 Startups</a>
+    <a href="/opportunities/grant" class="tab {{ 'active' if current_category == 'grant' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'grant' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'grant' else '#666' }}; margin-bottom: -2px;">🎯 Grants</a>
+</div>
+
 <div class="filters">
     <select id="filter-source">
         <option value="">All Sources</option>
@@ -25,8 +32,18 @@
     <thead>
         <tr>
             <th>Title</th>
-            <th>Company</th>
-            <th>Source</th>
+            <th>Company / Program</th>
+            {% if current_category == 'startup' or current_category == 'all' %}
+            <th>Stage</th>
+            <th>Amount</th>
+            {% endif %}
+            {% if current_category == 'grant' or current_category == 'all' %}
+            <th>Amount</th>
+            {% endif %}
+            {% if current_category == 'job' or current_category == 'all' %}
+            <th>Location</th>
+            <th>Remote</th>
+            {% endif %}
             <th>Score</th>
             <th>Status</th>
             <th>Date</th>
@@ -40,8 +57,18 @@
             data-status="{{ opp.status or 'new' }}"
             data-title="{{ opp.title or '' }}">
             <td>{{ opp.title[:60] if opp.title else '' }}</td>
-            <td>{{ opp.company }}</td>
-            <td><span class="status-badge status-new">{{ opp.source }}</span></td>
+            <td>{{ opp.company }}{% if opp.program and (current_category == 'startup' or current_category == 'all') %}<br><small style="color:#888;">{{ opp.program }}</small>{% endif %}</td>
+            {% if current_category == 'startup' or current_category == 'all' %}
+            <td>{{ opp.stage or '—' }}</td>
+            <td>{{ opp.amount or '—' }}</td>
+            {% endif %}
+            {% if current_category == 'grant' or current_category == 'all' %}
+            <td>{{ opp.amount or '—' }}</td>
+            {% endif %}
+            {% if current_category == 'job' or current_category == 'all' %}
+            <td>{{ opp.location or '—' }}</td>
+            <td>{{ opp.remote or '—' }}</td>
+            {% endif %}
             <td class="{% if opp.score and opp.score >= 0.7 %}score-high{% elif opp.score and opp.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
                 {{ "%.0f"|format(opp.score * 100) if opp.score else "—" }}%
             </td>
@@ -55,8 +82,8 @@
 {% else %}
 <div class="card">
     <p style="color: #999; text-align: center; padding: 2rem;">
-        No opportunities yet.
-        <a href="/" style="color: #4361ee;">Run Discovery</a> from the dashboard to populate this list.
+        No {{ current_category if current_category != 'all' else '' }} opportunities yet.
+        <a href="/" style="color: #4361ee;">Run Discovery</a> from the dashboard.
     </p>
 </div>
 {% endif %}
@@ -76,10 +103,22 @@ function showDetail(id) {
     fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
         document.getElementById('modal-title').textContent = opp.title;
         let html = '<p><strong>Company:</strong> ' + opp.company + '</p>';
+        html += '<p><strong>Category:</strong> ' + opp.category + '</p>';
         html += '<p><strong>Source:</strong> ' + opp.source + '</p>';
         html += '<p><strong>Status:</strong> ' + opp.status + '</p>';
         html += '<p><strong>Score:</strong> ' + (opp.score ? Math.round(opp.score*100) + '%' : '—') + '</p>';
-        html += '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
+        if (opp.category === 'startup') {
+            html += '<p><strong>Program:</strong> ' + (opp.program || '—') + '</p>';
+            html += '<p><strong>Stage:</strong> ' + (opp.stage || '—') + '</p>';
+            html += '<p><strong>Amount:</strong> ' + (opp.amount || '—') + '</p>';
+        }
+        if (opp.category === 'grant') {
+            html += '<p><strong>Amount:</strong> ' + (opp.amount || '—') + '</p>';
+        }
+        if (opp.category === 'job') {
+            html += '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
+            html += '<p><strong>Remote:</strong> ' + (opp.remote || '—') + '</p>';
+        }
         html += '<p><strong>Description:</strong></p><p>' + (opp.description || 'No description') + '</p>';
         html += '<div style="margin-top: 1rem;"><a href="' + opp.url + '" target="_blank" class="btn btn-primary">Open Link</a></div>';
         document.getElementById('modal-body').innerHTML = html;

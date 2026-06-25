@@ -15,8 +15,26 @@
             </div>
             <ul class="nav-links">
                 <li><a href="/" class="{{ 'active' if page == 'home' }}">📊 Dashboard</a></li>
-                <li><a href="/opportunities" class="{{ 'active' if page == 'opportunities' }}">📋 Opportunities</a></li>
-                <li><a href="/review" class="{{ 'active' if page == 'review' }}">⭐ Review Queue</a></li>
+                <li>
+                    <a href="/opportunities" class="{{ 'active' if page == 'opportunities' }}">📋 Opportunities</a>
+                    {% if page == 'opportunities' %}
+                    <ul style="padding-left: 1.5rem; list-style: none; margin-top: 0.25rem;">
+                        <li><a href="/opportunities/job" style="font-size: 0.85rem;">💼 Jobs</a></li>
+                        <li><a href="/opportunities/startup" style="font-size: 0.85rem;">🚀 Startups</a></li>
+                        <li><a href="/opportunities/grant" style="font-size: 0.85rem;">🎯 Grants</a></li>
+                    </ul>
+                    {% endif %}
+                </li>
+                <li>
+                    <a href="/review" class="{{ 'active' if page == 'review' }}">⭐ Review Queue</a>
+                    {% if page == 'review' %}
+                    <ul style="padding-left: 1.5rem; list-style: none; margin-top: 0.25rem;">
+                        <li><a href="/review/job" style="font-size: 0.85rem;">💼 Jobs</a></li>
+                        <li><a href="/review/startup" style="font-size: 0.85rem;">🚀 Startups</a></li>
+                        <li><a href="/review/grant" style="font-size: 0.85rem;">🎯 Grants</a></li>
+                    </ul>
+                    {% endif %}
+                </li>
                 <li><a href="/applications" class="{{ 'active' if page == 'applications' }}">📨 Applications</a></li>
                 <li><a href="/settings" class="{{ 'active' if page == 'settings' }}">⚙️ Settings</a></li>
             </ul>
