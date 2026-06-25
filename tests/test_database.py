@@ -87,3 +87,15 @@ class TestDatabase:
 
     def test_audit_log(self, repo):
         repo.log_audit("test_action", "test_component", {"key": "value"})
+
+    def test_get_pending_by_category(self, repo):
+        repo.add_opportunity({"title": "Job 1", "company": "A", "url": "https://a.com/1", "category": "job"})
+        repo.add_opportunity({"title": "Startup 1", "company": "YC", "url": "https://yc.com/1", "category": "startup"})
+        repo.add_opportunity({"title": "Grant 1", "company": "NSF", "url": "https://nsf.gov/1", "category": "grant"})
+        jobs = repo.get_pending_opportunities(category="job")
+        assert len(jobs) == 1
+        assert jobs[0].category == "job"
+        stats = repo.get_stats_by_category()
+        assert stats["job"] == 1
+        assert stats["startup"] == 1
+        assert stats["grant"] == 1

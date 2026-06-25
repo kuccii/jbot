@@ -30,13 +30,16 @@ class Repository:
             session.commit()
             return record.id
 
-    def get_pending_opportunities(self, min_score: float = 0.0) -> list:
+    def get_pending_opportunities(self, min_score: float = 0.0, category: str | None = None) -> list:
         from sqlalchemy import or_
         with Session(self.engine) as session:
-            return session.query(Opportunity).filter(
+            query = session.query(Opportunity).filter(
                 Opportunity.status == "new",
                 or_(Opportunity.score.is_(None), Opportunity.score >= min_score),
-            ).all()
+            )
+            if category:
+                query = query.filter(Opportunity.category == category)
+            return query.all()
 
     def update_opportunity_status(self, opp_id: int, status: str) -> bool:
         with Session(self.engine) as session:
@@ -88,3 +91,13 @@ class Repository:
                 "applied": session.query(Opportunity).filter_by(status="applied").count(),
                 "rejected": session.query(Opportunity).filter_by(status="rejected").count(),
             }
+
+    def get_stats_by_category(self) -> dict:
+        with Session(self.engine) as session:
+            cats = ["job", "startup", "grant"]
+            result = {}
+            for cat in cats:
+                result[cat] = session.query(Opportunity).filter(
+                    Opportunity.category == cat
+                ).count()
+            return result
