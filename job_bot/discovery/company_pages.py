@@ -40,7 +40,27 @@ OPPORTUNITY_KEYWORDS = re.compile(
 SKIP_URL_PATTERNS = re.compile(
     r"(twitter\.com|facebook\.com|linkedin\.com|instagram\.com|"
     r"youtube\.com|t\.co|x\.com|login|signup|sign.?in|register|"
-    r"forgot|password|privacy|cookie|terms)",
+    r"forgot|password|privacy|cookie|terms|category=|/category/|/browse)",
+    re.IGNORECASE,
+)
+
+# ── Text patterns suggesting a generic nav/category page (not a real listing)
+SKIP_TEXT_PATTERNS = re.compile(
+    r"^(engineering & manufacturing|finance & management|admin support|"
+    r"sales & marketing|writing & translation|design & multimedia|"
+    r"it & programming|explore the projects|join the .*team|"
+    r"browse \w+|all \w+|view all|categories|top \w+ jobs|"
+    r"popular \w+|featured \w+|trending|recent \w+)$",
+    re.IGNORECASE,
+)
+
+# ── Patterns suggesting a real listing (not a nav/category page)
+LISTING_INDICATORS = re.compile(
+    r"(salary|experience|requirement|qualification|responsibilit|"
+    r"engineer|developer|designer|analyst|manager|consultant|"
+    r"coordinator|specialist|assistant|director|lead|architect|"
+    r"intern|contract|freelance|part.time|full.time|remote|"
+    r"onsite|hybrid|senior|junior|mid.level|principal)",
     re.IGNORECASE,
 )
 
@@ -120,9 +140,14 @@ class CompanyPagesScraper(BaseScraper):
                         # Skip noise links that dominate the results
                         if SKIP_URL_PATTERNS.search(href) or SKIP_URL_PATTERNS.search(text):
                             continue
+                        # Skip generic nav/category text
+                        if SKIP_TEXT_PATTERNS.match(text.strip()):
+                            continue
                         # Must match at least one opportunity keyword
                         if not OPPORTUNITY_KEYWORDS.search(text) and not OPPORTUNITY_KEYWORDS.search(href):
                             continue
+                        # Prefer links with listing indicators (job titles, skills, etc.)
+                        # but still accept links without them if matched above
 
                         full_url = (
                             href
@@ -177,17 +202,6 @@ class CompanyPagesScraper(BaseScraper):
                             seen_urls.add(opp.url)
                             opportunities.append(opp)
                             links_found += 1
-
-                    # --- Intelligent fallback --------------------------------
-                    if not links_found:
-                        opportunities.append(Opportunity(
-                            title=page_title,
-                            company=entry,
-                            url=url,
-                            description=page_title,
-                            source="company_pages",
-                            category=category,
-                        ))
 
                 except Exception:
                     pass

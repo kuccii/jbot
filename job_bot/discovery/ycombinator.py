@@ -174,21 +174,20 @@ class YCombinatorScraper(BaseScraper):
                 pass
 
             # ── 2.  ycombinator.com/jobs ────────────────────────────────────
-            if not opportunities:
-                try:
-                    resp = await client.get(
-                        "https://www.ycombinator.com/jobs",
-                        headers=headers,
-                    )
-                    if resp.status_code == 200:
-                        soup = BeautifulSoup(resp.text, "html.parser")
-                        data = self._find_next_data(soup)
-                        if data:
-                            opportunities.extend(self._parse_yc_jobs(data))
-                except Exception:
-                    pass
+            try:
+                resp = await client.get(
+                    "https://www.ycombinator.com/jobs",
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    data = self._find_next_data(soup)
+                    if data:
+                        opportunities.extend(self._parse_yc_jobs(data))
+            except Exception:
+                pass
 
-            # ── 3.  JSON‑LD fallback ─────────────────────────────────────────
+            # ── 3.  JSON‑LD fallback for sources that returned nothing ───────
             if not opportunities:
                 for page_url in (
                     "https://www.workatastartup.com/companies",

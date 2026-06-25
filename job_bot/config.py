@@ -14,7 +14,7 @@ class LLMConfig(BaseModel):
     temperature: float = 0.3
     gemini_api_key: str = ""
     nim_api_key: str = ""
-    nim_base_url: str = "https://api.nvcf.nvidia.com/v2/llm"
+    nim_base_url: str = "https://integrate.api.nvidia.com/v1"
     opencode_api_key: str = ""
     opencode_base_url: str = "https://opencode.ai/zen/v1"
     ollama_base_url: str = "http://localhost:11434"
