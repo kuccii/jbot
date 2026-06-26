@@ -26,7 +26,7 @@ class DiscoveryConfig(BaseModel):
         "google_search": True, "linkedin": True, "indeed": False,
         "ycombinator": True, "grants": True,
         "accelerators": True, "fellowships": True,
-        "hackathons": True, "african_jobs": True,
+        "hackathons": True, "african_jobs": True, "twitter": True,
     })
     companies: list[str] = Field(default_factory=list)
     serper_api_key: str = ""

@@ -7,3 +7,4 @@ from job_bot.discovery import accelerators  # noqa: F401
 from job_bot.discovery import fellowships  # noqa: F401
 from job_bot.discovery import hackathons  # noqa: F401
 from job_bot.discovery import african_jobs  # noqa: F401
+from job_bot.discovery import twitter  # noqa: F401

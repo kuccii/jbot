@@ -24,7 +24,7 @@ class DiscoveryOrchestrator:
                 continue
             try:
                 scraper = get_scraper(name)
-                if name == "google_search":
+                if hasattr(scraper, "set_api_key"):
                     scraper.set_api_key(self.config.get("serper_api_key", ""))
                 if name == "company_pages":
                     scraper.set_companies(self.config.get("companies", []))

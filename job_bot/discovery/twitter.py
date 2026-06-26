@@ -3,8 +3,8 @@ from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
 
 
-@register("linkedin")
-class LinkedInScraper(BaseScraper):
+@register("twitter")
+class TwitterScraper(BaseScraper):
     def __init__(self):
         self.api_key = ""
 
@@ -27,17 +27,18 @@ class LinkedInScraper(BaseScraper):
             seen = set()
             queries = []
             for skill in criteria.skills:
-                queries.append(f"site:linkedin.com {skill} freelance remote 2026")
-                queries.append(f"site:linkedin.com /jobs/ {skill} contract")
-            queries.append("site:linkedin.com developpp ventures funding 2026")
-            queries.append("site:linkedin.com giz jobs rwanda tanzania 2026")
-            queries.append("site:linkedin.com startup accelerator africa program 2026")
-            queries.append("site:linkedin.com grant funding east africa 2026")
-            queries.append("site:linkedin.com freelance remote developer africa")
-            queries.append("site:linkedin.com rwanda tech job 2026")
-            queries.append("site:linkedin.com tanzania digital opportunity 2026")
-            queries.append("site:linkedin.com startup funding opportunity africa")
-            queries.append("site:linkedin.com fellowship africa 2026")
+                queries.append(f"site:twitter.com {skill} freelance remote africa")
+            queries.append("site:twitter.com developpp ventures funding 2026")
+            queries.append("site:twitter.com giz rwanda tanzania jobs 2026")
+            queries.append("site:twitter.com startup funding africa 2026")
+            queries.append("site:twitter.com grant opportunity east africa")
+            queries.append("site:x.com developpp ventures")
+            queries.append("site:x.com giz africa opportunities")
+            queries.append("site:twitter.com freelance remote developer africa")
+            queries.append("site:twitter.com accelerator program africa 2026")
+            queries.append("site:x.com rwanda tech funding")
+            queries.append("site:twitter.com mastercard foundation fellowship")
+            queries.append("site:twitter.com anzisha prize 2026")
             for q in queries:
                 try:
                     resp = await client.post(
@@ -54,10 +55,10 @@ class LinkedInScraper(BaseScraper):
                             title = item.get("title", "")
                             results.append(Opportunity(
                                 title=title,
-                                company=item.get("source", "LinkedIn"),
+                                company=item.get("source", "Twitter"),
                                 url=link,
                                 description=snippet,
-                                source="linkedin",
+                                source="twitter",
                                 category=self._categorize(title, snippet),
                             ))
                 except Exception:

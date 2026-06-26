@@ -22,6 +22,11 @@ discovery:
     indeed: false
     ycombinator: true
     grants: true
+    accelerators: true
+    fellowships: true
+    hackathons: true
+    african_jobs: true
+    twitter: true
   companies: []
   serper_api_key: ""
   grants_keywords: []
