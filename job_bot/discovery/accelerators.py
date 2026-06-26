@@ -6,9 +6,9 @@ from job_bot.discovery.utils import extract_deadline, is_expired
 
 ACCELERATOR_URLS = [
     ("https://flat6labs.com/programs/", "Flat6Labs"),
-    ("https://foundersfactory.com/apply/", "Founders Factory Africa"),
-    ("https://seedstars.com/entrepreneurs/", "Seedstars"),
-    ("https://grindstoneaccelerator.com/apply/", "Grindstone Accelerator"),
+    ("https://www.seedstars.com/startups", "Seedstars"),
+    ("https://grindstoneaccelerator.com/", "Grindstone Accelerator"),
+    ("https://www.etiba.co/", "eTiba"),
 ]
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

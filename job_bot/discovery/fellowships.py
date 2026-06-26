@@ -5,7 +5,8 @@ from job_bot.discovery.registry import register
 from job_bot.discovery.utils import extract_deadline, is_expired
 
 FELLOWSHIP_SOURCES = [
-    ("https://mastercardfdn.org/all-scholarships/", "Mastercard Foundation"),
+    ("https://mastercardfoundation.org/scholarships/", "Mastercard Foundation"),
+    ("https://www.anzishaprize.org/apply/", "Anzisha Prize"),
 ]
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

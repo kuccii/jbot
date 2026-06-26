@@ -1,3 +1,4 @@
+import re
 import httpx
 from bs4 import BeautifulSoup
 from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
@@ -32,13 +33,19 @@ class AfricanJobBoardScraper(BaseScraper):
 
                     items = soup.find_all("article")
                     if not items:
+                        items = soup.find_all("section", class_=lambda c: c and any(
+                            k in (c or "").lower() for k in ("job", "listing", "search")
+                        ))
+                    if not items:
                         items = soup.find_all("div", class_=lambda c: c and any(
-                            k in (c or "").lower() for k in ("job", "listing", "card", "post", "item")
+                            k in (c or "").lower() for k in ("job", "listing", "card", "post", "item", "search-result", "vacancy")
                         ))
                     if not items:
                         items = soup.find_all("li", class_=lambda c: c and "job" in (c or "").lower())
                     if not items:
-                        items = [soup]
+                        items = soup.find_all(["tr", "div", "li"], attrs={"data-id": True})
+                    if not items:
+                        items = soup.find_all("a", href=re.compile(r"(job|vacancy|career|apply)"))
 
                     any_success = True
                     for item in items:
