@@ -26,6 +26,9 @@ GRANT_SOURCES: list[tuple[str, str]] = [
     ("https://www.opportunitiesforafricans.com/category/grants/", "opportunitiesforafricans.com"),
     ("https://menterprise.africa/category/grants/", "menterprise.africa"),
     ("https://www.fundsforngos.org/", "fundsforngos.org"),
+    ("https://www.developpp.de/en/application/ventures", "develoPPP Ventures"),
+    ("https://invest-for-jobs.com/en/calls-for-proposals-overview", "Invest for Jobs"),
+    ("https://vc4a.com/developpp/2025-q2/", "VC4A develoPPP"),
 ]
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"

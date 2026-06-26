@@ -25,6 +25,14 @@ class GoogleSearchScraper(BaseScraper):
                 queries.append(f"{kw} grant funding 2026")
             queries.append("remote contract developer Africa 2026")
             queries.append("remote AI engineer contract 2026")
+            queries.append("develoPPP Ventures funding Rwanda Tanzania 2026")
+            queries.append("develoPPP GIZ startup funding East Africa")
+            queries.append("GIZ develoPPP jobs Rwanda Kenya Tanzania")
+            queries.append("invest-for-jobs develoPPP call proposals")
+            queries.append("startup funding grant Rwanda East Africa 2026")
+            queries.append("German development cooperation tech Africa apply")
+            queries.append("Rwanda tech startup incubator accelerator 2026")
+            queries.append("Tanzania digital jobs freelance platform")
             for q in queries:
                 try:
                     resp = await client.post(
