@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from job_bot.database.repository import Repository
 from job_bot.intelligence.drafter import Drafter
+from job_bot.intelligence.enricher import ContentEnricher
 from job_bot.intelligence.liveness import LivenessChecker
 from job_bot.intelligence.matcher import Matcher
 from job_bot.utils.logging import get_logger
@@ -16,6 +17,7 @@ class ReviewManager:
         self.matcher = matcher
         self.drafter = drafter
         self._liveness = LivenessChecker()
+        self._enricher = ContentEnricher()
         self._sem = asyncio.Semaphore(5)
 
     async def _review_one(self, opp, profile) -> dict | None:
@@ -26,10 +28,16 @@ class ReviewManager:
                 logger.info("skipping_dead", opp_id=opp.id, url=opp.url, source=live_source)
                 return None
 
+            content, error = await self._enricher.enrich(opp.url)
+            if error:
+                logger.warning("enrich_failed", opp_id=opp.id, error=error, url=opp.url)
+
+            opportunity_text = content if content else f"{opp.title} {opp.description}"
+
             scores, cover = await asyncio.gather(
                 self.matcher.score(
                     profile.get("cv_text", ""),
-                    f"{opp.title} {opp.description}",
+                    opportunity_text,
                     category=opp.category,
                 ),
                 self.drafter.generate_cover_letter(
@@ -42,7 +50,7 @@ class ReviewManager:
             )
             self.repo.update_opportunity_scores(opp.id, scores)
         composite = scores.get("composite", 50)
-        logger.info("review_generated", opp_id=opp.id, composite=composite)
+        logger.info("review_generated", opp_id=opp.id, score=composite, enriched=bool(content))
         return {
             "opportunity_id": opp.id,
             "title": opp.title,
@@ -56,4 +64,5 @@ class ReviewManager:
         pending = self.repo.get_pending_opportunities(min_score=0.3)
         tasks = [self._review_one(opp, profile) for opp in pending]
         results = await asyncio.gather(*tasks)
+        await self._enricher.close()
         return [r for r in results if r is not None]

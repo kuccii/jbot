@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
-    provider: str = "ollama"
-    model: str = "llama3.1:8b"
+    provider: str = "opencode"
+    model: str = "deepseek-v4-flash-free"
     embedding_model: str = "nomic-embed-text"
     temperature: float = 0.3
     gemini_api_key: str = ""

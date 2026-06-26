@@ -11,6 +11,9 @@ from job_bot.config import load_config
 from job_bot.database.repository import init_db, Repository
 from job_bot.database.models import Opportunity
 from job_bot.pipeline import Pipeline
+from job_bot.utils.logging import get_logger
+
+logger = get_logger()
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -66,8 +69,18 @@ async def _run_discovery(pipeline: Pipeline, repo: Repository):
     try:
         results = await pipeline.discover()
         _last_run["discovery"] = f"Found {len(results)} opportunities"
+
+        # Auto-run review/scoring after discovery
+        try:
+            reviews = await pipeline.review()
+            _last_run["review"] = f"Reviewed {len(reviews)} opportunities"
+            repo.log_audit("auto_review_complete", "pipeline", {"count": len(reviews)})
+        except Exception as e2:
+            logger.error("auto_review_error", error=str(e2))
+            _last_run["review"] = f"Error: {e2}"
+
         _last_run["status"] = "idle"
-        repo.log_audit("discovery_complete", "pipeline", {"count": len(results)})
+        repo.log_audit("discovery_complete", "pipeline", {"count": len(results), "auto_reviewed": True})
     except Exception as e:
         _last_run["discovery"] = f"Error: {e}"
         _last_run["status"] = "idle"
