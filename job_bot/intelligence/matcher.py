@@ -1,43 +1,60 @@
+import json
+
 from job_bot.intelligence.providers.base import LLMProvider
+from job_bot.utils.logging import get_logger
+
+logger = get_logger()
+
+FALLBACK_SCORES = {
+    "cv_match": 50, "compensation": 50, "culture": 50,
+    "red_flags": 50, "legitimacy": 50, "global": 50,
+    "prose": "Score parsing failed. Manual review recommended.",
+    "composite": 50,
+}
+
+SCORING_PROMPT = """Rate this opportunity across 6 dimensions.
+Return ONLY valid JSON with these keys (no markdown, no explanation):
+
+{{
+  "cv_match": <0-100 how well does the profile match the requirements>,
+  "compensation": <0-100 how competitive is the pay/benefits>,
+  "culture": <0-100 how well does the company culture fit>,
+  "red_flags": <0-100 how many red flags (inverted: 0=many flags, 100=clean)>,
+  "legitimacy": <0-100 how legitimate/verifiable is this opportunity>,
+  "global": <0-100 how accessible is this for global applicants>,
+  "prose": "<2-3 sentence summary of why or why not>"
+}}
+
+PROFILE:
+{profile}
+
+OPPORTUNITY:
+{opportunity}
+"""
 
 
 class Matcher:
     def __init__(self, provider: LLMProvider):
         self.provider = provider
 
-    async def score(self, profile_text: str, opportunity_text: str, category: str = "job") -> float:
-        prompts = {
-            "job": f"""Rate the fit (0-100) between this profile and job opportunity.
-
-PROFILE:
-{profile_text[:1500]}
-
-OPPORTUNITY:
-{opportunity_text[:1500]}
-
-Return ONLY a number between 0 and 100 representing how well this profile matches the job requirements.""",
-            "startup": f"""Rate the fit (0-100) between this profile and startup program.
-
-PROFILE:
-{profile_text[:1500]}
-
-PROGRAM:
-{opportunity_text[:1500]}
-
-Return ONLY a number between 0 and 100 representing how well this profile fits the startup program's eligibility and the founder's background.""",
-            "grant": f"""Rate the fit (0-100) between this profile and grant/fellowship opportunity.
-
-PROFILE:
-{profile_text[:1500]}
-
-GRANT DETAILS:
-{opportunity_text[:1500]}
-
-Return ONLY a number between 0 and 100 representing how well this profile matches the grant's eligibility criteria and focus area.""",
-        }
-        prompt = prompts.get(category, prompts["job"])
-        result = await self.provider.generate(prompt)
+    async def score(self, profile_text: str, opportunity_text: str, category: str = "job") -> dict:
+        prompt = SCORING_PROMPT.format(
+            profile=profile_text[:2000],
+            opportunity=opportunity_text[:2000],
+        )
+        result = await self.provider.generate(
+            prompt,
+            system="You are a career opportunity evaluator. Return JSON only.",
+        )
         try:
-            return min(100, max(0, float(result.strip()))) / 100
-        except (ValueError, TypeError):
-            return 0.0
+            scores = json.loads(result.strip())
+            required = {"cv_match", "compensation", "culture", "red_flags", "legitimacy", "global", "prose"}
+            if not required.issubset(scores.keys()):
+                raise ValueError(f"Missing keys: {required - scores.keys()}")
+            for k in required - {"prose"}:
+                scores[k] = max(0, min(100, int(scores[k])))
+            scores["composite"] = sum(scores[k] for k in required - {"prose"}) // 6
+            return scores
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.error("score_parse_failed", error=str(e), raw=result[:200])
+            return dict(FALLBACK_SCORES)

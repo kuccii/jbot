@@ -1,6 +1,34 @@
 import httpx
 from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
+from job_bot.discovery.utils import is_rwanda_tanzania_eligible
+
+# ── Job queries — broad Twitter/X job searches ────────────────────────────
+JOB_QUERIES = [
+    "site:twitter.com freelance remote developer africa",
+    "site:twitter.com contract developer remote 2026",
+    "site:x.com freelance remote job",
+    "site:twitter.com remote AI engineer",
+    "site:twitter.com hiring remote developer",
+]
+
+# ── Startup queries — strictly Rwanda/Tanzania / East Africa ──────────────
+STARTUP_QUERIES = [
+    "site:twitter.com developpp ventures Rwanda",
+    "site:x.com GIZ startup Rwanda Tanzania",
+    "site:twitter.com startup funding East Africa",
+    "site:x.com Rwanda tech startup accelerator",
+    "site:twitter.com Tanzania startup incubator",
+]
+
+# ── Grant queries — strictly Rwanda/Tanzania / East Africa ────────────────
+GRANT_QUERIES = [
+    "site:twitter.com grant opportunity East Africa",
+    "site:twitter.com mastercard foundation fellowship",
+    "site:twitter.com anzisha prize 2026",
+    "site:x.com Rwanda Tanzania grant funding",
+    "site:twitter.com Rwanda fellowship 2026",
+]
 
 
 @register("twitter")
@@ -11,56 +39,61 @@ class TwitterScraper(BaseScraper):
     def set_api_key(self, key: str):
         self.api_key = key
 
-    def _categorize(self, title: str, snippet: str) -> str:
-        text = (title + " " + snippet).lower()
-        if any(w in text for w in ("grant", "funding", "fellowship", "scholarship")):
-            return "grant"
-        if any(w in text for w in ("startup", "accelerator", "incubator", "venture", "pitch")):
-            return "startup"
-        return "job"
+    async def _search(self, q: str) -> list[dict]:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://google.serper.dev/search",
+                    json={"q": q, "num": 10},
+                    headers={"X-API-KEY": self.api_key},
+                )
+                return resp.json().get("organic", [])
+        except Exception:
+            return []
+
+    def _is_valid_url(self, link: str) -> bool:
+        return any(d in link.lower() for d in ("twitter.com", "x.com", "t.co"))
 
     async def discover(self, criteria: SearchCriteria) -> list[Opportunity]:
         if not self.api_key:
             return []
-        async with httpx.AsyncClient() as client:
-            results = []
-            seen = set()
-            queries = []
-            for skill in criteria.skills:
-                queries.append(f"site:twitter.com {skill} freelance remote africa")
-            queries.append("site:twitter.com developpp ventures funding 2026")
-            queries.append("site:twitter.com giz rwanda tanzania jobs 2026")
-            queries.append("site:twitter.com startup funding africa 2026")
-            queries.append("site:twitter.com grant opportunity east africa")
-            queries.append("site:x.com developpp ventures")
-            queries.append("site:x.com giz africa opportunities")
-            queries.append("site:twitter.com freelance remote developer africa")
-            queries.append("site:twitter.com accelerator program africa 2026")
-            queries.append("site:x.com rwanda tech funding")
-            queries.append("site:twitter.com mastercard foundation fellowship")
-            queries.append("site:twitter.com anzisha prize 2026")
-            for q in queries:
-                try:
-                    resp = await client.post(
-                        "https://google.serper.dev/search",
-                        json={"q": q, "num": 10},
-                        headers={"X-API-KEY": self.api_key},
-                    )
-                    data = resp.json()
-                    for item in data.get("organic", []):
-                        link = item.get("link", "")
-                        if link not in seen:
-                            seen.add(link)
-                            snippet = item.get("snippet", "")
-                            title = item.get("title", "")
-                            results.append(Opportunity(
-                                title=title,
-                                company=item.get("source", "Twitter"),
-                                url=link,
-                                description=snippet,
-                                source="twitter",
-                                category=self._categorize(title, snippet),
-                            ))
-                except Exception:
-                    pass
-            return results
+        results = []
+        seen = set()
+
+        job_qs = list(JOB_QUERIES)
+        startup_qs = list(STARTUP_QUERIES)
+        grant_qs = list(GRANT_QUERIES)
+
+        for skill in criteria.skills:
+            job_qs.append(f"site:twitter.com {skill} freelance remote africa")
+
+        for kw in criteria.keywords:
+            startup_qs.append(f"site:twitter.com {kw} Rwanda Tanzania")
+            grant_qs.append(f"site:x.com {kw} grant Rwanda Tanzania")
+
+        for q, category, geography_check in [
+            *[(q, "job", False) for q in job_qs],
+            *[(q, "startup", True) for q in startup_qs],
+            *[(q, "grant", True) for q in grant_qs],
+        ]:
+            items = await self._search(q)
+            for item in items:
+                link = item.get("link", "")
+                if link in seen:
+                    continue
+                if not self._is_valid_url(link):
+                    continue
+                seen.add(link)
+                snippet = item.get("snippet", "")
+                title = item.get("title", "")
+                if geography_check and not is_rwanda_tanzania_eligible(title, snippet):
+                    continue
+                results.append(Opportunity(
+                    title=title,
+                    company=item.get("source", "Twitter"),
+                    url=link,
+                    description=snippet,
+                    source="twitter",
+                    category=category,
+                ))
+        return results

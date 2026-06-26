@@ -32,6 +32,14 @@
         <div class="value" id="stat-rejected">{{ stats.get('rejected', 0) }}</div>
         <div class="label">Rejected</div>
     </div>
+    <div class="stat-card">
+        <div class="value" id="stat-scored">{{ stats.get('scored', 0) }}</div>
+        <div class="label">Scored</div>
+    </div>
+    <div class="stat-card">
+        <div class="value" id="stat-dead">{{ stats.get('dead', 0) }}</div>
+        <div class="label">Dead</div>
+    </div>
 </div>
 
 <div id="category-stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
@@ -129,6 +137,8 @@ function refreshStats() {
             document.getElementById('stat-new').textContent = stats.new;
             document.getElementById('stat-applied').textContent = stats.applied;
             document.getElementById('stat-rejected').textContent = stats.rejected || 0;
+            document.getElementById('stat-scored').textContent = stats.scored || 0;
+            document.getElementById('stat-dead').textContent = stats.dead || 0;
             const cards = document.querySelectorAll('#category-stats-grid h3');
             if (cards.length === 3 && stats.by_category) {
                 cards[0].textContent = stats.by_category.job || 0;

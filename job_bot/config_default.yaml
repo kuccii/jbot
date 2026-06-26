@@ -30,6 +30,7 @@ discovery:
   companies: []
   serper_api_key: ""
   grants_keywords: []
+  sources_path: data/sources.yaml
 
 application:
   human_approval: true

@@ -23,10 +23,12 @@ class MockProvider:
         self.name = "mock"
         self._response = response
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, system: str | None = None) -> str:
         self.last_prompt = prompt
         return self._response
 
+
+VALID_SCORES = '{"cv_match": 85, "compensation": 60, "culture": 70, "red_flags": 90, "legitimacy": 80, "global": 75, "prose": "Good fit"}'
 
 class TestMatcher:
     def test_matcher_creation(self):
@@ -36,33 +38,35 @@ class TestMatcher:
 
     @pytest.mark.asyncio
     async def test_score_job_prompt(self):
-        matcher = Matcher(MockProvider("80"))
+        matcher = Matcher(MockProvider(VALID_SCORES))
         result = await matcher.score("Profile", "Job opportunity", category="job")
-        assert result == 0.8
+        assert result["composite"] == 76
+        assert result["cv_match"] == 85
 
     @pytest.mark.asyncio
     async def test_score_startup_prompt(self):
-        matcher = Matcher(MockProvider("70"))
+        matcher = Matcher(MockProvider(VALID_SCORES))
         result = await matcher.score("Profile", "Startup program", category="startup")
-        assert result == 0.7
+        assert result["composite"] == 76
 
     @pytest.mark.asyncio
     async def test_score_grant_prompt(self):
-        matcher = Matcher(MockProvider("90"))
+        matcher = Matcher(MockProvider(VALID_SCORES))
         result = await matcher.score("Profile", "Grant opportunity", category="grant")
-        assert result == 0.9
+        assert result["composite"] == 76
 
     @pytest.mark.asyncio
     async def test_score_fallback_to_job(self):
-        matcher = Matcher(MockProvider("60"))
+        matcher = Matcher(MockProvider(VALID_SCORES))
         result = await matcher.score("Profile", "Unknown", category="unknown")
-        assert result == 0.6
+        assert result["composite"] == 76
 
     @pytest.mark.asyncio
-    async def test_score_non_numeric_returns_zero(self):
+    async def test_score_non_numeric_fallback(self):
         matcher = Matcher(MockProvider("not a number"))
         result = await matcher.score("Profile", "Job", category="job")
-        assert result == 0.0
+        assert result["composite"] == 50
+        assert result["prose"] == "Score parsing failed. Manual review recommended."
 
 
 class TestDrafter:

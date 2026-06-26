@@ -3,6 +3,17 @@ from httpx import AsyncClient, ASGITransport
 from job_bot.dashboard.server import app
 
 
+@pytest.fixture(autouse=True)
+def _override_db(monkeypatch, tmp_path):
+    """Point dashboard endpoints at a temp database with fresh schema."""
+    from job_bot.database.repository import init_db, Repository
+    db_path = str(tmp_path / "test.db")
+    db_url = init_db(db_path)
+    repo = Repository(db_url)
+    import job_bot.dashboard.server as server
+    monkeypatch.setattr(server, "get_repo", lambda: repo)
+
+
 class TestDashboard:
     @pytest.mark.asyncio
     async def test_home_page(self):

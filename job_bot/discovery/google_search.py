@@ -1,6 +1,50 @@
 import httpx
 from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
+from job_bot.discovery.utils import is_rwanda_tanzania_eligible
+
+# ── Job queries — broad, global, remote contract/freelance ────────────────
+JOB_QUERIES = [
+    "1099 contract remote developer 2026",
+    "remote AI engineer contract 2026",
+    "freelance software developer remote 2026",
+    "contract full stack developer remote",
+    "remote product designer contract 2026",
+    "hire freelance developer contract remote",
+    "site:wellfound.com startup jobs remote",
+    "remote engineering manager contract 2026",
+    "site:upwork.com freelance developer",
+    "site:toptal.com freelance engineer",
+]
+
+# ── Startup queries — strictly Rwanda/Tanzania / East Africa ──────────────
+STARTUP_QUERIES = [
+    "develoPPP Ventures funding Rwanda Tanzania 2026",
+    "GIZ develoPPP startup funding Rwanda Tanzania East Africa",
+    "site:developpp.de ventures call Rwanda Tanzania",
+    "east africa startup funding program 2026",
+    "Rwanda startup incubator accelerator 2026",
+    "Tanzania digital entrepreneurship program 2026",
+    "German development cooperation Rwanda Tanzania startup",
+    "invest-for-jobs develoPPP call proposals Rwanda Tanzania",
+    "KfW development bank Rwanda Tanzania startup",
+    "Rwanda tech startup government support 2026",
+]
+
+# ── Grant queries — strictly Rwanda/Tanzania / East Africa ────────────────
+GRANT_QUERIES = [
+    "Rwanda Tanzania grant funding 2026",
+    "fellowship Rwanda Tanzania 2026",
+    "east africa grant funding opportunities 2026",
+    "site:opportunitydesk.org Rwanda Tanzania grant 2026",
+    "site:opportunitiesforafricans.com Rwanda Tanzania grant",
+    "GIZ bilateral cooperation grant Rwanda Tanzania 2026",
+    "UNDP innovation challenge Rwanda Tanzania 2026",
+    "World Bank youth program Rwanda Tanzania",
+    "African Development Bank grant Rwanda Tanzania",
+    "USaid Rwanda Tanzania grant program 2026",
+    "EU Horizon Europe Africa grant Rwanda Tanzania",
+]
 
 
 @register("google_search")
@@ -11,66 +55,60 @@ class GoogleSearchScraper(BaseScraper):
     def set_api_key(self, key: str):
         self.api_key = key
 
+    async def _search(self, q: str) -> list[dict]:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://google.serper.dev/search",
+                    json={"q": q, "num": 10},
+                    headers={"X-API-KEY": self.api_key},
+                )
+                return resp.json().get("organic", [])
+        except Exception:
+            return []
+
     async def discover(self, criteria: SearchCriteria) -> list[Opportunity]:
         if not self.api_key:
             return []
-        async with httpx.AsyncClient() as client:
-            results = []
-            seen = set()
-            queries = []
-            for skill in criteria.skills:
-                queries.append(f"{skill} 1099 contract remote 2026")
-                queries.append(f"hire {skill} freelance remote")
-            for kw in criteria.keywords:
-                queries.append(f"{kw} grant funding 2026")
-            queries.append("remote contract developer Africa 2026")
-            queries.append("remote AI engineer contract 2026")
-            queries.append("develoPPP Ventures funding Rwanda Tanzania 2026")
-            queries.append("develoPPP GIZ startup funding East Africa")
-            queries.append("GIZ develoPPP jobs Rwanda Kenya Tanzania")
-            queries.append("invest-for-jobs develoPPP call proposals")
-            queries.append("startup funding grant Rwanda East Africa 2026")
-            queries.append("German development cooperation tech Africa apply")
-            queries.append("Rwanda tech startup incubator accelerator 2026")
-            queries.append("Tanzania digital jobs freelance platform")
-            queries.append("german development cooperation startup program africa 2026")
-            queries.append("eu horizon europe africa innovation grants 2026")
-            queries.append("world bank africa youth entrepreneurship program 2026")
-            queries.append("undp africa innovation challenge 2026")
-            queries.append("african development bank youth jobs program 2026")
-            queries.append("japan international cooperation agency africa startup 2026")
-            queries.append("french development agency afd africa entrepreneurship 2026")
-            queries.append("usaid africa tech ecosystem support program 2026")
-            queries.append("east africa grant funding opportunities portal 2026")
-            queries.append("rwanda startup government support program 2026")
-            queries.append("tanzania digital entrepreneurship grant 2026")
-            queries.append("kenya tech innovation hub accelerator 2026")
-            queries.append("giz bilateral cooperation tender rwanda 2026")
-            queries.append("kfw development bank africa startup 2026")
-            queries.append("site:developpp.de ventures call 2026")
-            queries.append("site:giz.de jobs rwanda tanzania 2026")
-            queries.append("site:opportunitydesk.org rwanda 2026")
-            queries.append("site:opportunitiesforafricans.com grant 2026")
-            for q in queries:
-                try:
-                    resp = await client.post(
-                        "https://google.serper.dev/search",
-                        json={"q": q, "num": 10},
-                        headers={"X-API-KEY": self.api_key},
-                    )
-                    data = resp.json()
-                    for item in data.get("organic", []):
-                        link = item.get("link", "")
-                        if link not in seen:
-                            seen.add(link)
-                            results.append(Opportunity(
-                                title=item.get("title", ""),
-                                company=item.get("source", ""),
-                                url=link,
-                                description=item.get("snippet", ""),
-                                source="google_search",
-                                category="job",
-                            ))
-                except Exception:
-                    pass
-            return results
+        results = []
+        seen = set()
+
+        # Build query lists
+        job_qs = list(JOB_QUERIES)
+        startup_qs = list(STARTUP_QUERIES)
+        grant_qs = list(GRANT_QUERIES)
+
+        # Skills → job queries
+        for skill in criteria.skills:
+            job_qs.append(f"{skill} 1099 contract remote 2026")
+            job_qs.append(f"hire {skill} freelance remote")
+
+        # Keywords → startup + grant queries (Rwanda/Tanzania scoped)
+        for kw in criteria.keywords:
+            startup_qs.append(f"{kw} Rwanda Tanzania startup 2026")
+            grant_qs.append(f"{kw} Rwanda Tanzania grant 2026")
+
+        for q, category, geography_check in [
+            *[(q, "job", False) for q in job_qs],
+            *[(q, "startup", True) for q in startup_qs],
+            *[(q, "grant", True) for q in grant_qs],
+        ]:
+            items = await self._search(q)
+            for item in items:
+                link = item.get("link", "")
+                if link in seen:
+                    continue
+                seen.add(link)
+                snippet = item.get("snippet", "")
+                title = item.get("title", "")
+                if geography_check and not is_rwanda_tanzania_eligible(title, snippet):
+                    continue
+                results.append(Opportunity(
+                    title=title,
+                    company=item.get("source", ""),
+                    url=link,
+                    description=snippet,
+                    source="google_search",
+                    category=category,
+                ))
+        return results

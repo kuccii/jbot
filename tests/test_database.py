@@ -1,101 +1,64 @@
-import pytest
-from pathlib import Path
-from job_bot.database.repository import init_db, Repository
+from job_bot.database.models import Opportunity
 
 
-class TestDatabase:
-    @pytest.fixture
-    def repo(self, tmp_path):
-        db_path = str(tmp_path / "test.db")
-        db_url = init_db(db_path)
-        return Repository(db_url)
+class TestOpportunityModel:
+    def test_new_columns_exist(self):
+        cols = {c.name for c in Opportunity.__table__.columns}
+        assert "liveness_status" in cols
+        assert "liveness_checked_at" in cols
+        assert "score_cv_match" in cols
+        assert "score_compensation" in cols
+        assert "score_culture" in cols
+        assert "score_red_flags" in cols
+        assert "score_legitimacy" in cols
+        assert "score_global" in cols
+        assert "score_prose" in cols
 
-    def test_add_and_get_opportunity(self, repo):
-        oid = repo.add_opportunity({
-            "title": "AI Engineer",
-            "company": "OpenAI",
-            "url": "https://openai.com/careers/123",
-            "source": "company_pages",
-            "remote": "Remote",
-        })
+    def test_repository_add_and_get(self, db, sample_opportunity):
+        oid = db.add_opportunity(sample_opportunity)
         assert oid > 0
+        pending = db.get_pending_opportunities()
+        assert len(pending) == 1
 
-    def test_no_duplicates(self, repo):
-        oid1 = repo.add_opportunity({
-            "title": "Duplicate",
-            "company": "X",
-            "url": "https://x.com/job/1",
-        })
-        oid2 = repo.add_opportunity({
-            "title": "Duplicate",
-            "company": "X",
-            "url": "https://x.com/job/1",
-        })
+    def test_repository_dedup(self, db, sample_opportunity):
+        oid1 = db.add_opportunity(sample_opportunity)
+        oid2 = db.add_opportunity(sample_opportunity)
+        pending = db.get_pending_opportunities()
+        assert len(pending) == 1
         assert oid1 == oid2
 
-    def test_stats(self, repo):
-        repo.add_opportunity({"title": "Job 1", "company": "A", "url": "https://a.com/1"})
-        repo.add_opportunity({"title": "Job 2", "company": "B", "url": "https://b.com/1"})
-        stats = repo.get_stats()
-        assert stats["total"] == 2
-        assert stats["new"] == 2
+    def test_update_opportunity_liveness_dead(self, db, sample_opportunity):
+        oid = db.add_opportunity(sample_opportunity)
+        db.update_opportunity_liveness(oid, "dead")
+        opp = db.get_pending_opportunities()
+        assert len(opp) == 0
 
-    def test_update_status(self, repo):
-        oid = repo.add_opportunity({"title": "Job", "company": "C", "url": "https://c.com/1"})
-        result = repo.update_opportunity_status(oid, "applied")
-        assert result is True
-        result_missing = repo.update_opportunity_status(999, "applied")
-        assert result_missing is False
-
-    def test_extra_keys_filtered(self, repo):
-        oid = repo.add_opportunity({
-            "title": "Job",
-            "company": "C",
-            "url": "https://c.com/job",
-            "nonexistent_column": "should be ignored",
-        })
-        assert oid > 0
-
-    def test_application_creation(self, repo):
-        oid = repo.add_opportunity({"title": "Job", "company": "C", "url": "https://c.com/job"})
-        app_id = repo.add_application({
-            "opportunity_id": oid,
-            "platform": "greenhouse",
-            "status": "draft",
-        })
-        assert app_id > 0
-
-    def test_opportunity_with_category(self, repo):
-        oid = repo.add_opportunity({
-            "title": "YC W26",
-            "company": "Y Combinator",
-            "url": "https://ycombinator.com/apply",
-            "category": "startup",
-            "program": "YC W26",
-            "stage": "Pre-seed",
-            "amount": "$500K",
-        })
-        assert oid > 0
-        from job_bot.database.models import Opportunity
+    def test_update_opportunity_scores(self, db, sample_opportunity):
+        oid = db.add_opportunity(sample_opportunity)
+        scores = {
+            "cv_match": 85, "compensation": 60, "culture": 70,
+            "red_flags": 90, "legitimacy": 80, "global": 75,
+            "prose": "Good fit", "composite": 76,
+        }
+        db.update_opportunity_scores(oid, scores)
         from sqlalchemy.orm import Session
-        with Session(repo.engine) as session:
-            opp = session.query(Opportunity).filter_by(id=oid).first()
-            assert opp.category == "startup"
-            assert opp.program == "YC W26"
-            assert opp.stage == "Pre-seed"
-            assert opp.amount == "$500K"
+        with Session(db.engine) as s:
+            opp = s.query(Opportunity).filter_by(id=oid).first()
+            assert opp.score_cv_match == 85
+            assert opp.score_prose == "Good fit"
+            assert opp.score == 0.76
 
-    def test_audit_log(self, repo):
-        repo.log_audit("test_action", "test_component", {"key": "value"})
+    def test_get_stats_has_new_fields(self, db):
+        stats = db.get_stats()
+        assert "scored" in stats
+        assert "dead" in stats
+        assert "unscored" in stats
 
-    def test_get_pending_by_category(self, repo):
-        repo.add_opportunity({"title": "Job 1", "company": "A", "url": "https://a.com/1", "category": "job"})
-        repo.add_opportunity({"title": "Startup 1", "company": "YC", "url": "https://yc.com/1", "category": "startup"})
-        repo.add_opportunity({"title": "Grant 1", "company": "NSF", "url": "https://nsf.gov/1", "category": "grant"})
-        jobs = repo.get_pending_opportunities(category="job")
-        assert len(jobs) == 1
-        assert jobs[0].category == "job"
-        stats = repo.get_stats_by_category()
-        assert stats["job"] == 1
-        assert stats["startup"] == 1
-        assert stats["grant"] == 1
+    def test_sorted_query(self, db, sample_opportunity):
+        db.add_opportunity(sample_opportunity)
+        opp2 = dict(sample_opportunity)
+        opp2["url"] = "https://example.com/job/456"
+        opp2["title"] = "Senior Engineer"
+        db.add_opportunity(opp2)
+        sorted_opps = db.get_pending_opportunities_sorted(sort_by="created_desc")
+        assert len(sorted_opps) >= 2

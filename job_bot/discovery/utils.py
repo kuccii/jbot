@@ -122,3 +122,40 @@ def is_expired(deadline: datetime | None) -> bool:
     if deadline.tzinfo is None:
         deadline = deadline.replace(tzinfo=timezone.utc)
     return deadline < now
+
+
+# ── Geography filter for startup/grant opportunities ──────────────────────────
+
+_OTHER_AFRICAN_COUNTRIES = [
+    "ghana", "nigeria", "kenya", "south africa", "uganda", "ethiopia",
+    "egypt", "morocco", "senegal", "ivory coast", "côte d'ivoire",
+    "cameroon", "zambia", "zimbabwe", "mozambique", "angola",
+    "botswana", "malawi", "mali", "burkina faso", "niger", "benin",
+    "togo", "congo", "liberia", "sierra leone", "south sudan",
+    "mauritania", "chad", "gabon", "namibia", "madagascar",
+    "swaziland", "eswatini", "lesotho", "eritrea", "central african republic",
+    "the gambia", "gambia", "mauritius", "seychelles", "cape verde",
+    "comoros", "djibouti", "equatorial guinea", "guinea", "guinea-bissau",
+    "sao tome", "somalia",
+]
+
+
+def is_rwanda_tanzania_eligible(title: str, snippet: str) -> bool:
+    """Check startup/grant results are relevant to Rwanda or Tanzania.
+
+    If the text explicitly mentions non-Rwanda/Tanzania African countries
+    without also mentioning Rwanda or Tanzania, it is rejected.
+    """
+    text = (title + " " + snippet).lower()
+
+    rwanda_tz = {"rwanda", "tanzania"}
+    mentions_rwanda_tz = any(c in text for c in rwanda_tz)
+    mentions_other = any(c in text for c in _OTHER_AFRICAN_COUNTRIES)
+
+    if mentions_rwanda_tz:
+        return True
+    if mentions_other:
+        return False
+    if "east africa" in text:
+        return True
+    return True  # no country mentioned → general opportunity, keep it

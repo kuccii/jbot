@@ -1,18 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Review Queue{% endblock %}
 {% block content %}
-<div class="page-title">⭐ Review Queue</div>
+<div class="page-title">&#11088; Review Queue</div>
 
 <div class="tabs" style="display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0;">
-    <a href="/review" class="tab {{ 'active' if current_category == 'all' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'all' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'all' else '#666' }}; margin-bottom: -2px; font-weight: {{ '600' if current_category == 'all' else '400' }};">All</a>
-    <a href="/review/job" class="tab {{ 'active' if current_category == 'job' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'job' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'job' else '#666' }}; margin-bottom: -2px;">💼 Jobs</a>
-    <a href="/review/startup" class="tab {{ 'active' if current_category == 'startup' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'startup' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'startup' else '#666' }}; margin-bottom: -2px;">🚀 Startups</a>
-    <a href="/review/grant" class="tab {{ 'active' if current_category == 'grant' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'grant' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'grant' else '#666' }}; margin-bottom: -2px;">🎯 Grants</a>
+    <a href="/review?sort={{ sort }}" class="tab {{ 'active' if current_category == 'all' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'all' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'all' else '#666' }}; margin-bottom: -2px; font-weight: {{ '600' if current_category == 'all' else '400' }};">All</a>
+    <a href="/review/job?sort={{ sort }}" class="tab {{ 'active' if current_category == 'job' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'job' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'job' else '#666' }}; margin-bottom: -2px;">&#128188; Jobs</a>
+    <a href="/review/startup?sort={{ sort }}" class="tab {{ 'active' if current_category == 'startup' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'startup' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'startup' else '#666' }}; margin-bottom: -2px;">&#128640; Startups</a>
+    <a href="/review/grant?sort={{ sort }}" class="tab {{ 'active' if current_category == 'grant' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'grant' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'grant' else '#666' }}; margin-bottom: -2px;">&#127919; Grants</a>
 </div>
 
-<div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+<div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
     <button class="btn btn-success" onclick="confirmBulkApprove()" id="btn-bulk">Approve Top 5</button>
-    <button class="btn btn-sm btn-primary" onclick="location.reload()">🔄 Refresh</button>
+    <button class="btn btn-danger" onclick="confirmBatchReject()" id="btn-batch-reject">Reject Dead</button>
+    <button class="btn btn-sm btn-primary" onclick="location.reload()">&#128260; Refresh</button>
+    <select onchange="changeSort(this.value)" style="padding: 0.4rem; border: 1px solid #ccc; border-radius: 6px;">
+        <option value="score_desc" {{ 'selected' if sort == 'score_desc' }}>Sort: Score (High)</option>
+        <option value="created_desc" {{ 'selected' if sort == 'created_desc' }}>Sort: Newest</option>
+    </select>
     <span id="bulk-count" style="color: #999; font-size: 0.85rem;">{{ reviews|length }} pending</span>
 </div>
 
@@ -25,9 +30,25 @@
                 {{ "%.0f"|format(r.score * 100) }}%
             </span>
             | Source: {{ r.source }}
+            | Live: <span class="{% if r.liveness_status == 'dead' %}score-low{% elif r.liveness_status == 'live' %}score-high{% else %}score-med{% endif %}">{{ r.liveness_status }}</span>
         </div>
+        <div id="scores-{{ r.id }}" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0;">
+            {% set dims = {'cv_match': 'CV Match', 'compensation': 'Comp', 'culture': 'Culture', 'red_flags': 'Flags', 'legitimacy': 'Legit', 'global': 'Global'} %}
+            {% for key, label in dims.items() %}
+            {% set val = r.scores.get(key) if r.scores else 0 %}
+            <div style="font-size: 0.75rem;">
+                <span>{{ label }}</span>
+                <div style="background: #eee; height: 8px; border-radius: 4px; margin-top: 2px;">
+                    <div style="background: {{ '#2e7d32' if val and val >= 70 else '#f57f17' if val and val >= 40 else '#c62828' }}; width: {{ val or 0 }}%; height: 8px; border-radius: 4px;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if r.prose %}
+        <p style="font-size: 0.8rem; color: #666; margin: 4px 0 8px 0;">{{ r.prose }}</p>
+        {% endif %}
         <div style="margin-bottom: 0.75rem;">
-            <button class="btn btn-sm btn-primary" onclick="toggleDetails({{ r.id }})" id="btn-details-{{ r.id }}">📄 Show Details</button>
+            <button class="btn btn-sm btn-primary" onclick="toggleDetails({{ r.id }})" id="btn-details-{{ r.id }}">&#128196; Show Details</button>
             <div id="details-{{ r.id }}" style="display: none; margin-top: 0.5rem; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; max-height: 200px; overflow-y: auto;"></div>
         </div>
         <div class="form-group">
@@ -35,8 +56,9 @@
             <textarea id="cover-{{ r.id }}" rows="4">{{ r.cover_letter }}</textarea>
         </div>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="btn btn-success btn-sm" onclick="approve({{ r.id }})">✅ Approve & Send</button>
-            <button class="btn btn-danger btn-sm" onclick="reject({{ r.id }})">❌ Reject</button>
+            <button class="btn btn-success btn-sm" onclick="approve({{ r.id }})">&#9989; Approve & Send</button>
+            <button class="btn btn-danger btn-sm" onclick="reject({{ r.id }})">&#10060; Reject</button>
+            <button class="btn btn-sm" onclick="skip({{ r.id }})" style="background: #eee;">&#9200; Skip</button>
             <span id="feedback-{{ r.id }}" style="font-size: 0.85rem;"></span>
         </div>
     </div>
@@ -61,13 +83,24 @@
     </div>
 </div>
 
+<div class="modal" id="batch-reject-modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3>Reject dead opportunities?</h3>
+        <p style="margin: 1rem 0; color: #666;">This will reject all opportunities marked as dead from liveness check.</p>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button class="btn" onclick="closeBatchReject()" style="background: #eee;">Cancel</button>
+            <button class="btn btn-danger" onclick="batchReject()">Yes, Reject</button>
+        </div>
+    </div>
+</div>
+
 <script>
 function approve(id) {
     const cover = document.getElementById('cover-' + id).value;
     const btn = document.querySelector('#review-' + id + ' .btn-success');
     const feedback = document.getElementById('feedback-' + id);
     btn.disabled = true;
-    feedback.textContent = '⏳ Sending...';
+    feedback.textContent = '&#9203; Sending...';
     feedback.style.color = '#999';
     fetch('/api/review/' + id + '/approve', {
         method: 'POST',
@@ -77,16 +110,16 @@ function approve(id) {
         if (data.success) {
             document.getElementById('review-' + id).style.opacity = '0.4';
             document.getElementById('review-' + id).style.pointerEvents = 'none';
-            feedback.textContent = '✅ Approved';
+            feedback.textContent = '&#9989; Approved';
             feedback.style.color = '#2e7d32';
             updateCount();
         } else {
-            feedback.textContent = '❌ Error';
+            feedback.textContent = '&#10060; Error';
             feedback.style.color = '#c62828';
             btn.disabled = false;
         }
     }).catch(() => {
-        feedback.textContent = '❌ Network error';
+        feedback.textContent = '&#10060; Network error';
         feedback.style.color = '#c62828';
         btn.disabled = false;
     });
@@ -98,8 +131,20 @@ function reject(id) {
         if (data.success) {
             document.getElementById('review-' + id).style.opacity = '0.3';
             document.getElementById('review-' + id).style.pointerEvents = 'none';
-            feedback.textContent = '❌ Rejected';
+            feedback.textContent = '&#10060; Rejected';
             feedback.style.color = '#c62828';
+            updateCount();
+        }
+    });
+}
+function skip(id) {
+    const feedback = document.getElementById('feedback-' + id);
+    fetch('/api/review/' + id + '/skip', {method: 'POST'}).then(r => r.json()).then(data => {
+        if (data.success) {
+            document.getElementById('review-' + id).style.opacity = '0.3';
+            document.getElementById('review-' + id).style.pointerEvents = 'none';
+            feedback.textContent = '&#9200; Skipped';
+            feedback.style.color = '#f57f17';
             updateCount();
         }
     });
@@ -109,10 +154,11 @@ function toggleDetails(id) {
     const btn = document.getElementById('btn-details-' + id);
     if (details.style.display === 'none') {
         details.style.display = 'block';
-        btn.textContent = '📄 Hide Details';
+        btn.textContent = '&#128196; Hide Details';
         if (!details.dataset.loaded) {
             fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
-                let html = '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
+                let html = '<p><strong>Location:</strong> ' + (opp.location || '\u2014') + '</p>';
+                html += '<p><strong>Deadline:</strong> ' + (opp.deadline || '\u2014') + '</p>';
                 html += '<p><strong>Description:</strong> ' + (opp.description || 'No description') + '</p>';
                 html += '<a href="' + opp.url + '" target="_blank" class="btn btn-sm btn-primary" style="margin-top: 0.5rem;">Open Link</a>';
                 details.innerHTML = html;
@@ -121,7 +167,7 @@ function toggleDetails(id) {
         }
     } else {
         details.style.display = 'none';
-        btn.textContent = '📄 Show Details';
+        btn.textContent = '&#128196; Show Details';
     }
 }
 function confirmBulkApprove() {
@@ -139,6 +185,26 @@ function bulkApprove() {
     visible.forEach((el, i) => {
         if (i < 5) approve(el.id.replace('review-', ''));
     });
+}
+function confirmBatchReject() {
+    document.getElementById('batch-reject-modal').classList.add('open');
+}
+function closeBatchReject() {
+    document.getElementById('batch-reject-modal').classList.remove('open');
+}
+document.getElementById('batch-reject-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeBatchReject();
+});
+function batchReject() {
+    closeBatchReject();
+    fetch('/api/review/batch-reject', {method: 'POST'}).then(r => r.json()).then(data => {
+        alert('Rejected ' + data.count + ' dead opportunities.');
+        location.reload();
+    });
+}
+function changeSort(val) {
+    const cat = '{{ current_category }}';
+    window.location.href = '/review/' + (cat === 'all' ? '' : cat) + '?sort=' + val;
 }
 function updateCount() {
     const visible = document.querySelectorAll('#review-cards > .card:not([style*="pointer-events: none"])').length;

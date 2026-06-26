@@ -31,6 +31,7 @@ class DiscoveryConfig(BaseModel):
     companies: list[str] = Field(default_factory=list)
     serper_api_key: str = ""
     grants_keywords: list[str] = Field(default_factory=list)
+    sources_path: str = "data/sources.yaml"
 
 
 class ApplicationConfig(BaseModel):
