@@ -3,13 +3,15 @@ from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
 from job_bot.discovery.utils import is_rwanda_tanzania_eligible
 
-# ── Job queries — broad LinkedIn job searches ─────────────────────────────
+# ── Job queries — LinkedIn jobs open to global / African talent ───────────
 JOB_QUERIES = [
+    "site:linkedin.com remote jobs worldwide africa",
     "site:linkedin.com freelance remote developer 2026",
-    "site:linkedin.com jobs contract developer remote",
-    "site:linkedin.com remote AI engineer",
-    "site:linkedin.com remote product designer",
-    "site:linkedin.com freelance software engineer",
+    "site:linkedin.com remote developer contract global",
+    "site:linkedin.com remote software engineer international",
+    "site:linkedin.com remote product designer worldwide",
+    "site:linkedin.com entry level remote jobs global",
+    "site:linkedin.com freelance software engineer africa",
 ]
 
 # ── Startup queries — strictly Rwanda/Tanzania / East Africa ──────────────

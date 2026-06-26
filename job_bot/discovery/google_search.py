@@ -3,18 +3,22 @@ from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
 from job_bot.discovery.utils import is_rwanda_tanzania_eligible
 
-# ── Job queries — broad, global, remote contract/freelance ────────────────
+# ── Job queries — global remote jobs open to African talent ───────────────
 JOB_QUERIES = [
-    "1099 contract remote developer 2026",
-    "remote AI engineer contract 2026",
-    "freelance software developer remote 2026",
-    "contract full stack developer remote",
-    "remote product designer contract 2026",
-    "hire freelance developer contract remote",
-    "site:wellfound.com startup jobs remote",
-    "remote engineering manager contract 2026",
+    "site:remotive.com remote developer africa",
+    "site:remoteok.com remote developer worldwide",
+    "site:weworkremotely.com remote jobs worldwide",
+    "global remote developer jobs open to africa 2026",
+    "international remote jobs hiring worldwide africa",
+    "remote software engineer africa timezone 2026",
+    "site:wellfound.com startup jobs remote worldwide",
+    "remote full stack developer contract worldwide",
+    "remote AI engineer contract global 2026",
+    "hiring remote developers africa remote job",
     "site:upwork.com freelance developer",
     "site:toptal.com freelance engineer",
+    "site:linkedin.com remote jobs worldwide entry level",
+    "remote jobs for african developers 2026",
 ]
 
 # ── Startup queries — strictly Rwanda/Tanzania / East Africa ──────────────

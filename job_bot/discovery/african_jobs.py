@@ -11,6 +11,9 @@ JOB_BOARD_SOURCES = [
     ("https://www.careers24.com.za/jobs", "Careers24 South Africa"),
     ("https://www.jobwebafrica.com/jobs", "JobWebAfrica"),
     ("https://www.jobberman.com/jobs", "Jobberman Nigeria"),
+    ("https://africanworkforce.com/jobs", "AfricanWorkforce"),
+    ("https://remotajobs.com/africa", "RemotaJobs Africa"),
+    ("https://www.ethiojobs.net/jobs", "EthioJobs"),
 ]
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

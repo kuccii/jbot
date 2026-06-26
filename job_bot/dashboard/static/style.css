@@ -20,20 +20,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-success { background: #2ec4b6; color: #fff; }
 .btn-danger { background: #e71d36; color: #fff; }
 .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
-th { background: #f8f9fa; font-weight: 600; font-size: 0.85rem; color: #666; }
-tr:hover { background: #f8f9fa; }
-.status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 500; }
+
+/* ── Table container with scroll ── */
+.table-container { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); overflow: hidden; }
+.table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 310px); }
+.table-scroll table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table-scroll thead { position: sticky; top: 0; z-index: 2; }
+.table-scroll th { background: #f8f9fa; font-weight: 600; font-size: 0.8rem; color: #666; padding: 0.65rem 0.85rem; text-align: left; border-bottom: 2px solid #e0e0e0; white-space: nowrap; }
+.table-scroll td { padding: 0.55rem 0.85rem; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 0.88rem; }
+.table-scroll tbody tr:nth-child(even) { background: #fafbfc; }
+.table-scroll tbody tr:hover { background: #eef1ff; }
+.table-scroll tbody tr:last-child td { border-bottom: none; }
+.table-scroll .title-cell { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-scroll .company-cell { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.table-count { display: inline-block; font-size: 0.85rem; color: #888; margin-left: 0.75rem; font-weight: 400; }
+
+.status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
 .status-new { background: #e3f2fd; color: #1565c0; }
 .status-applied { background: #e8f5e9; color: #2e7d32; }
 .status-rejected { background: #fce4ec; color: #c62828; }
 .status-draft { background: #f5f5f5; color: #616161; }
-.score-high { color: #2e7d32; font-weight: 600; }
-.score-med { color: #f57f17; font-weight: 600; }
-.score-low { color: #c62828; font-weight: 600; }
-.filters { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.filters select, .filters input { padding: 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; }
+.score-high { color: #2e7d32; font-weight: 600; font-size: 0.85rem; }
+.score-med { color: #e65100; font-weight: 600; font-size: 0.85rem; }
+.score-low { color: #c62828; font-weight: 600; font-size: 0.85rem; }
+.filters { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+.filters select, .filters input { padding: 0.45rem 0.6rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.88rem; }
+.filters input { flex: 1; min-width: 180px; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0; }
+.tab { padding: 0.55rem 1.2rem; text-decoration: none; font-size: 0.9rem; border-bottom: 2px solid transparent; margin-bottom: -2px; color: #666; transition: all 0.15s; white-space: nowrap; }
+.tab:hover { color: #4361ee; }
+.tab.active { color: #4361ee; font-weight: 600; border-bottom-color: #4361ee; }
+
 .card { background: #fff; border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 1rem; }
 .card-header { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; }
 .card-meta { color: #666; font-size: 0.85rem; margin-bottom: 0.75rem; }
@@ -44,3 +64,9 @@ tr:hover { background: #f8f9fa; }
 .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; }
 .modal.open { display: flex; }
 .modal-content { background: #fff; border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+
+/* ── Category tag inline ── */
+.cat-tag { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 4px; font-size: 0.72rem; font-weight: 500; }
+.cat-job { background: #e3f2fd; color: #1565c0; }
+.cat-startup { background: #fce4ec; color: #ad1457; }
+.cat-grant { background: #e8f5e9; color: #2e7d32; }

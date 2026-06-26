@@ -3,11 +3,11 @@
 {% block content %}
 <div class="page-title">📋 Opportunities</div>
 
-<div class="tabs" style="display: flex; gap: 0; margin-bottom: 1rem; border-bottom: 2px solid #e0e0e0;">
-    <a href="/opportunities" class="tab {{ 'active' if current_category == 'all' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'all' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'all' else '#666' }}; margin-bottom: -2px; font-weight: {{ '600' if current_category == 'all' else '400' }};">All</a>
-    <a href="/opportunities/job" class="tab {{ 'active' if current_category == 'job' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'job' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'job' else '#666' }}; margin-bottom: -2px;">💼 Jobs</a>
-    <a href="/opportunities/startup" class="tab {{ 'active' if current_category == 'startup' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'startup' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'startup' else '#666' }}; margin-bottom: -2px;">🚀 Startups</a>
-    <a href="/opportunities/grant" class="tab {{ 'active' if current_category == 'grant' }}" style="padding: 0.5rem 1.2rem; text-decoration: none; border-bottom: 2px solid {{ '#4361ee' if current_category == 'grant' else 'transparent' }}; color: {{ '#4361ee' if current_category == 'grant' else '#666' }}; margin-bottom: -2px;">🎯 Grants</a>
+<div class="tabs">
+    <a href="/opportunities" class="tab {{ 'active' if current_category == 'all' }}">All</a>
+    <a href="/opportunities/job" class="tab {{ 'active' if current_category == 'job' }}">💼 Jobs</a>
+    <a href="/opportunities/startup" class="tab {{ 'active' if current_category == 'startup' }}">🚀 Startups</a>
+    <a href="/opportunities/grant" class="tab {{ 'active' if current_category == 'grant' }}">🎯 Grants</a>
 </div>
 
 <div class="filters">
@@ -25,60 +25,69 @@
     </select>
     <input type="text" id="filter-search" placeholder="Search by title...">
     <button class="btn btn-sm btn-primary" onclick="location.reload()" title="Refresh">🔄</button>
+    <span class="table-count" id="row-count"></span>
 </div>
 
 {% if opportunities %}
-<table id="opps-table">
-    <thead>
-        <tr>
-            <th>Title</th>
-            <th>Company / Program</th>
-            {% if current_category == 'startup' or current_category == 'all' %}
-            <th>Stage</th>
-            <th>Amount</th>
-            {% endif %}
-            {% if current_category == 'grant' or current_category == 'all' %}
-            <th>Amount</th>
-            {% endif %}
-            {% if current_category == 'job' or current_category == 'all' %}
-            <th>Location</th>
-            <th>Remote</th>
-            {% endif %}
-            <th>Score</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for opp in opportunities %}
-        <tr class="opp-row" onclick="showDetail({{ opp.id }})" style="cursor: pointer;"
-            data-source="{{ opp.source or '' }}"
-            data-status="{{ opp.status or 'new' }}"
-            data-title="{{ opp.title or '' }}">
-            <td>{{ opp.title[:60] if opp.title else '' }}</td>
-            <td>{{ opp.company }}{% if opp.program and (current_category == 'startup' or current_category == 'all') %}<br><small style="color:#888;">{{ opp.program }}</small>{% endif %}</td>
-            {% if current_category == 'startup' or current_category == 'all' %}
-            <td>{{ opp.stage or '—' }}</td>
-            <td>{{ opp.amount or '—' }}</td>
-            {% endif %}
-            {% if current_category == 'grant' or current_category == 'all' %}
-            <td>{{ opp.amount or '—' }}</td>
-            {% endif %}
-            {% if current_category == 'job' or current_category == 'all' %}
-            <td>{{ opp.location or '—' }}</td>
-            <td>{{ opp.remote or '—' }}</td>
-            {% endif %}
-            <td class="{% if opp.score and opp.score >= 0.7 %}score-high{% elif opp.score and opp.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
-                {{ "%.0f"|format(opp.score * 100) if opp.score else "—" }}%
-            </td>
-            <td><span class="status-badge status-{{ opp.status or 'new' }}">{{ opp.status or 'new' }}</span></td>
-            <td>{{ opp.created_at.strftime("%Y-%m-%d") if opp.created_at else "—" }}</td>
-            <td><a href="{{ opp.url }}" target="_blank" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">View</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-container">
+    <div class="table-scroll">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Company</th>
+                {% if current_category == 'all' %}
+                <th>Type</th>
+                {% endif %}
+                {% if current_category == 'startup' %}
+                <th>Program</th>
+                <th>Stage</th>
+                <th>Amount</th>
+                {% elif current_category == 'grant' %}
+                <th>Amount</th>
+                {% elif current_category == 'job' %}
+                <th>Location</th>
+                <th>Remote</th>
+                {% endif %}
+                <th>Score</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opp in opportunities %}
+            <tr class="opp-row" onclick="showDetail({{ opp.id }})" style="cursor: pointer;"
+                data-source="{{ opp.source or '' }}"
+                data-status="{{ opp.status or 'new' }}"
+                data-title="{{ opp.title or '' }}">
+                <td><div class="title-cell" title="{{ opp.title or '' }}">{{ opp.title[:80] if opp.title else '' }}</div></td>
+                <td><div class="company-cell" title="{{ opp.company or '' }}">{{ opp.company or '' }}</div></td>
+                {% if current_category == 'all' %}
+                <td><span class="cat-tag cat-{{ opp.category or 'job' }}">{{ opp.category or 'job' }}</span></td>
+                {% endif %}
+                {% if current_category == 'startup' %}
+                <td>{{ opp.program or '—' }}</td>
+                <td>{{ opp.stage or '—' }}</td>
+                <td>{{ opp.amount or '—' }}</td>
+                {% elif current_category == 'grant' %}
+                <td>{{ opp.amount or '—' }}</td>
+                {% elif current_category == 'job' %}
+                <td>{{ opp.location or '—' }}</td>
+                <td>{{ opp.remote or '—' }}</td>
+                {% endif %}
+                <td class="{% if opp.score and opp.score >= 0.7 %}score-high{% elif opp.score and opp.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
+                    {{ "%.0f"|format(opp.score * 100) if opp.score else "—" }}
+                </td>
+                <td><span class="status-badge status-{{ opp.status or 'new' }}">{{ opp.status or 'new' }}</span></td>
+                <td style="font-size:0.82rem; color:#888; white-space:nowrap;">{{ opp.created_at.strftime("%Y-%m-%d") if opp.created_at else "—" }}</td>
+                <td><a href="{{ opp.url }}" target="_blank" class="btn btn-sm btn-primary" onclick="event.stopPropagation()">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
 {% else %}
 <div class="card">
     <p style="color: #999; text-align: center; padding: 2rem;">
@@ -134,15 +143,23 @@ function applyFilters() {
     const source = document.getElementById('filter-source').value.toLowerCase();
     const status = document.getElementById('filter-status').value.toLowerCase();
     const search = document.getElementById('filter-search').value.toLowerCase();
+    let visible = 0;
     document.querySelectorAll('.opp-row').forEach(row => {
         const matchesSource = !source || row.dataset.source.toLowerCase().includes(source);
         const matchesStatus = !status || row.dataset.status.toLowerCase() === status;
         const matchesSearch = !search || row.dataset.title.toLowerCase().includes(search);
-        row.style.display = matchesSource && matchesStatus && matchesSearch ? '' : 'none';
+        const show = matchesSource && matchesStatus && matchesSearch;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
+    document.getElementById('row-count').textContent = visible + ' of {{ opportunities|length }}';
 }
 document.getElementById('filter-source').addEventListener('change', applyFilters);
 document.getElementById('filter-status').addEventListener('change', applyFilters);
 document.getElementById('filter-search').addEventListener('input', applyFilters);
+document.addEventListener('DOMContentLoaded', function() {
+    const total = document.querySelectorAll('.opp-row').length;
+    document.getElementById('row-count').textContent = total + ' total';
+});
 </script>
 {% endblock %}

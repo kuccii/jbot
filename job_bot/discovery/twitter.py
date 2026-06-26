@@ -3,13 +3,14 @@ from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
 from job_bot.discovery.utils import is_rwanda_tanzania_eligible
 
-# ── Job queries — broad Twitter/X job searches ────────────────────────────
+# ── Job queries — Twitter/X jobs open to global / African talent ──────────
 JOB_QUERIES = [
-    "site:twitter.com freelance remote developer africa",
-    "site:twitter.com contract developer remote 2026",
-    "site:x.com freelance remote job",
-    "site:twitter.com remote AI engineer",
-    "site:twitter.com hiring remote developer",
+    "site:twitter.com remote jobs africa 2026",
+    "site:twitter.com freelance remote developer worldwide",
+    "site:twitter.com hiring remote developer global",
+    "site:x.com remote jobs international africa",
+    "site:twitter.com remote AI engineer worldwide",
+    "site:twitter.com contract developer remote africa",
 ]
 
 # ── Startup queries — strictly Rwanda/Tanzania / East Africa ──────────────
