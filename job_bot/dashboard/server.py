@@ -252,6 +252,10 @@ async def save_settings(request: Request):
     cfg.discovery.sources["linkedin"] = form.get("source_linkedin") == "on"
     cfg.discovery.sources["grants"] = form.get("source_grants") == "on"
     cfg.discovery.sources["ycombinator"] = form.get("source_ycombinator") == "on"
+    cfg.discovery.sources["accelerators"] = form.get("source_accelerators") == "on"
+    cfg.discovery.sources["fellowships"] = form.get("source_fellowships") == "on"
+    cfg.discovery.sources["hackathons"] = form.get("source_hackathons") == "on"
+    cfg.discovery.sources["african_jobs"] = form.get("source_african_jobs") == "on"
     cfg.application.human_approval = form.get("human_approval") == "on"
     cfg.application.max_applications_per_run = int(form.get("max_applications_per_run", 5))
     cfg.notifications.whatsapp.enabled = form.get("whatsapp_enabled") == "on"

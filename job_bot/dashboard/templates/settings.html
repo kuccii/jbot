@@ -95,6 +95,18 @@
         <label><input type="checkbox" name="source_ycombinator" {{ 'checked' if config.discovery.sources.ycombinator }}> Y Combinator Startups</label>
     </div>
     <div class="form-group">
+        <label><input type="checkbox" name="source_accelerators" {{ 'checked' if config.discovery.sources.accelerators }}> African Accelerators (Flat6Labs, Seedstars, Founders Factory)</label>
+    </div>
+    <div class="form-group">
+        <label><input type="checkbox" name="source_fellowships" {{ 'checked' if config.discovery.sources.fellowships }}> African Fellowships (Mastercard Foundation, etc.)</label>
+    </div>
+    <div class="form-group">
+        <label><input type="checkbox" name="source_hackathons" {{ 'checked' if config.discovery.sources.hackathons }}> Hackathons & Dev Programs (MLH, Devpost)</label>
+    </div>
+    <div class="form-group">
+        <label><input type="checkbox" name="source_african_jobs" {{ 'checked' if config.discovery.sources.african_jobs }}> African Job Boards (BrighterMonday, MyJobMag, Jobberman)</label>
+    </div>
+    <div class="form-group">
         <label>Serper API Key <small style="color:#999;">(required for Google Search)</small></label>
         <input type="password" name="serper_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_serper_key else 'Paste your Serper API key' }}">
     </div>
