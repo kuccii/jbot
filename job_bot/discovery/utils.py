@@ -166,9 +166,13 @@ _POSITIVE_LOCATIONS = ["africa", "rwanda", "east africa", "global", "worldwide",
 #   "AE - DACH Market"             → region in parens
 #   "SA - Saudi Arabia"            → country in parens
 
+# Character sets for separators in title patterns
+# Hyphen, en-dash (\u2013), em-dash (\u2014), horizontal bar (\u2015)
+_SEP = r"[,\s\-\u2013\u2014\u2015]"
+
 _TITLE_CITY_SUFFIX_RE = re.compile(
-    r"""
-    [,\s–—-]\s*                    # separator: comma, dash, en-dash, em-dash
+    rf"""
+    {_SEP}\s*                    # separator: comma, dash, en-dash, em-dash
     (?:(
         (?:                         # city / country
             san\s+francisco|new\s+york|los\s+angeles|washington\s+dc|
@@ -274,7 +278,7 @@ def _extract_title_location(title: str) -> str | None:
             return loc
 
     # Pattern 2: "... - Location" or "... – Location" — dash suffix
-    m = re.search(r"[,\s–—-–—]\s*([A-Za-z].*?)\s*$", t)
+    m = re.search(r"[,\s\-\u2013\u2014\u2015]\s*([A-Za-z].*?)\s*$", t)
     if m:
         loc = m.group(1).strip().lower()
         # Remove trailing parenthetical qualifiers
@@ -306,24 +310,24 @@ def _title_location_is_excluded(title_lower: str) -> bool:
 
     # Fast check: known excluded regions (DACH, LATAM, APAC, etc.)
     for region in _REGIONS_EXCLUDING_RWANDA:
-        if re.search(r"(?:^|[,\s(\-–—])" + re.escape(region) + r"(?:[,\s)\-–—]|$)", title_lower):
+        if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])" + re.escape(region) + r"(?:[,\s)\-\u2013\u2014\u2015]|$)", title_lower):
             return True
 
     # Fast check: US state in title (word-boundary matched)
     for state in _US_STATES:
-        if re.search(r"(?:^|[,\s(\-–—])" + re.escape(state) + r"(?:[,\s)\-–—]|$)", title_lower):
+        if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])" + re.escape(state) + r"(?:[,\s)\-\u2013\u2014\u2015]|$)", title_lower):
             return True
 
     # Check for country/region names directly in title (word-boundary matched)
     for excl in _LOCATIONS_EXCLUDING_RWANDA:
         if len(excl) > 2:  # skip short entries like "us", "uk" that might match embedded
-            if re.search(r"(?:^|[,\s(\-–—])" + re.escape(excl) + r"(?:[,\s)\-–—]|$)", title_lower):
+            if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])" + re.escape(excl) + r"(?:[,\s)\-\u2013\u2014\u2015]|$)", title_lower):
                 return True
 
-    # Check for "US-based", "US only", "US remote", etc.
+    # Check for "US", "US-based", "US only", "US remote", etc.
     # Match "us" as a word with trailing separator, avoiding false positives
     # like "focus", "museum", "bus", "just", "plus"
-    if re.search(r"(?:^|[,\s(\-–—])us(?:[\s\-–—,.)]|$)", title_lower) and not re.search(r"\b(?:us\s*dollar|usd|united\s+states\s+(of\s+)?africa)", title_lower):
+    if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])us(?:[\s\-\u2013\u2014\u2015,.)]|$)", title_lower) and not re.search(r"\b(?:us\s*dollar|usd|united\s+states\s+(of\s+)?africa)", title_lower):
         return True
     # Check for "u.s." pattern
     if re.search(r"\bu\.s\.", title_lower):
@@ -366,7 +370,7 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
     for marker in _POSITIVE_TITLE_MARKERS:
         if marker in title_lower:
             # Only if not also location-locked (e.g., "Remote - US" should still fail)
-            if not re.search(r"remote[\s\-–—]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
+            if not re.search(r"remote[\s\-\u2013\u2014\u2015]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
                 return True
 
     # Fast negative — title-based location exclusion
@@ -400,7 +404,7 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
         return True
     if "remote" in title_lower and "remote" not in loc_lower:
         # Double-check it's not "Remote - US" style
-        if not re.search(r"remote[\s\-–—]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
+        if not re.search(r"remote[\s\-\u2013\u2014\u2015]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
             return True
 
     # Default: keep it (will be scored by AI)
