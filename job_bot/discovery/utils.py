@@ -305,7 +305,7 @@ def _title_location_is_excluded(title_lower: str) -> bool:
         if len(city) <= 3:
             # Short names (la, sf, nyc) need word-boundary matching to avoid
             # false positives like "platform" matching "la" or "transformation" matching "sf"
-            if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])" + re.escape(city) + r"(?:[,\s)\-\u2013\u2014\u2015]|$)", title_lower):
+            if re.search(r"(?:^|[,\s(\/\-\u2013\u2014\u2015])" + re.escape(city) + r"(?:[,\s)\/\-\u2013\u2014\u2015]|$)", title_lower):
                 return True
         else:
             # Longer names can use substring matching safely

@@ -24,6 +24,9 @@ AGGREGATOR_DOMAINS = [
     "jobviewtrack.com",
     "linkedin.com",
     "workingnomads.com", "4dayweek.io",
+    "instagram.com", "facebook.com", "tiktok.com",
+    "grantwriting.ca", "instrumentl.com",
+    "researchbunny.com", "peopleinai.com",
     # Aggregator / meta-roundup sites that don't list actual jobs
     "opportunitiesforafricans.com", "opportunitydesk.org",
     "invest-for-jobs.com", "menterprise.africa",

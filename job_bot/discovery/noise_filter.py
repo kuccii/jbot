@@ -30,6 +30,9 @@ AGGREGATOR_DOMAINS = [
     "jobviewtrack.com",
     "linkedin.com",
     "workingnomads.com", "4dayweek.io",
+    "instagram.com", "facebook.com", "tiktok.com",
+    "grantwriting.ca", "instrumentl.com",
+    "researchbunny.com", "peopleinai.com",
     # Aggregator / meta-roundup sites that don't list actual jobs
     "opportunitiesforafricans.com", "opportunitydesk.org",
     "invest-for-jobs.com", "menterprise.africa",
@@ -111,6 +114,9 @@ def check_entry(source: str, url: str, company: Optional[str], title: str) -> Op
 
     if source == "google_search" and _google_search_aggregator_only(company, url):
         return "google_search without identifiable company"
+
+    if url.lower().endswith(".pdf"):
+        return "PDF file (not an opportunity listing)"
 
     return None
 
