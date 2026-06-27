@@ -18,7 +18,7 @@ AGGREGATOR_DOMAINS = [
     "indeed.com", "ziprecruiter.com", "monster.com", "simplyhired.com",
     "glassdoor.com", "careerbuilder.com", "flexjobs.com",
     "dynamitejobs.com", "remoterocketship.com", "remote4africa.com",
-    "crossover.com", "seganrecruitment.com", "careerhound.io",
+    "crossover.com", "seganrecruitment.com", "careerhound.io", "fuzu.com",
     "globalhire360.com", "jobgether.com",
     "tunga.io", "gebeya.com",
     "arc.dev", "mctaba.com",
