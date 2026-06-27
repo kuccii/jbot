@@ -61,7 +61,7 @@ class ReviewManager:
         }
 
     async def review_pending(self, profile: dict) -> list:
-        pending = self.repo.get_pending_opportunities(min_score=0.3)
+        pending = self.repo.get_unscored_opportunities()
         tasks = [self._review_one(opp, profile) for opp in pending]
         results = await asyncio.gather(*tasks)
         await self._enricher.close()

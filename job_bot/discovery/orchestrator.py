@@ -2,6 +2,7 @@ from job_bot.discovery.base import SearchCriteria
 from job_bot.discovery.registry import list_scrapers, get_scraper
 from job_bot.discovery.utils import is_expired
 from job_bot.discovery.providers import ATS_PROVIDERS
+from job_bot.discovery.google_search import AGGREGATOR_DOMAINS
 from job_bot.database.repository import Repository
 from job_bot.utils.logging import get_logger
 
@@ -32,6 +33,10 @@ class DiscoveryOrchestrator:
                     scraper.set_companies(self.config.get("companies", []))
                 opps = await scraper.discover(criteria)
                 for opp in opps:
+                    # Safety-net: skip known aggregator domains
+                    opp_url = (opp.url or "").lower()
+                    if any(d in opp_url for d in AGGREGATOR_DOMAINS):
+                        continue
                     norm = opp.title.lower().strip()[:100]
                     if norm in normalized_titles:
                         continue

@@ -83,6 +83,15 @@ class Repository:
                 query = query.order_by(Opportunity.created_at.desc())
             return query.limit(limit).all()
 
+    def get_unscored_opportunities(self) -> list:
+        from sqlalchemy import or_
+        with Session(self.engine) as session:
+            return session.query(Opportunity).filter(
+                Opportunity.status == "new",
+                Opportunity.score.is_(None),
+                or_(Opportunity.liveness_status.is_(None), Opportunity.liveness_status != "dead"),
+            ).all()
+
     def update_opportunity_status(self, opp_id: int, status: str) -> bool:
         with Session(self.engine) as session:
             record = session.query(Opportunity).filter_by(id=opp_id).first()

@@ -3,11 +3,19 @@ from job_bot.discovery.base import BaseScraper, SearchCriteria, Opportunity
 from job_bot.discovery.registry import register
 from job_bot.discovery.utils import is_rwanda_tanzania_eligible
 
-# ── Job queries — global remote jobs open to African talent ───────────────
+# ── Known aggregator / non-direct listing domains to exclude ──────────────
+AGGREGATOR_DOMAINS = [
+    "remotive.com", "remoteok.com", "weworkremotely.com",
+    "upwork.com", "toptal.com", "freelancer.com", "fiverr.com",
+    "indeed.com", "ziprecruiter.com", "monster.com", "simplyhired.com",
+    "glassdoor.com", "careerbuilder.com", "flexjobs.com",
+    "dynamitejobs.com", "remoterocketship.com", "remote4africa.com",
+    "arc.dev", "mctaba.com",
+    "youtube.com", "youtu.be",
+]
+
+# ── Job queries — direct company listings + specific boards ───────────────
 JOB_QUERIES = [
-    "site:remotive.com remote developer africa",
-    "site:remoteok.com remote developer worldwide",
-    "site:weworkremotely.com remote jobs worldwide",
     "global remote developer jobs open to africa 2026",
     "international remote jobs hiring worldwide africa",
     "remote software engineer africa timezone 2026",
@@ -15,8 +23,6 @@ JOB_QUERIES = [
     "remote full stack developer contract worldwide",
     "remote AI engineer contract global 2026",
     "hiring remote developers africa remote job",
-    "site:upwork.com freelance developer",
-    "site:toptal.com freelance engineer",
     "site:linkedin.com remote jobs worldwide entry level",
     "remote jobs for african developers 2026",
 ]
@@ -105,6 +111,10 @@ class GoogleSearchScraper(BaseScraper):
                 seen.add(link)
                 snippet = item.get("snippet", "")
                 title = item.get("title", "")
+                # Skip known aggregator / non-direct listing domains
+                link_lower = link.lower()
+                if any(d in link_lower for d in AGGREGATOR_DOMAINS):
+                    continue
                 if geography_check and not is_rwanda_tanzania_eligible(title, snippet):
                     continue
                 results.append(Opportunity(

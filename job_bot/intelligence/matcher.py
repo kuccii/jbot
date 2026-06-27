@@ -47,7 +47,11 @@ class Matcher:
             system="You are a career opportunity evaluator. Return JSON only.",
         )
         try:
-            scores = json.loads(result.strip())
+            cleaned = result.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.split("\n", 1)[-1] if "\n" in cleaned else cleaned[3:]
+                cleaned = cleaned.rsplit("```", 1)[0].strip()
+            scores = json.loads(cleaned)
             required = {"cv_match", "compensation", "culture", "red_flags", "legitimacy", "global", "prose"}
             if not required.issubset(scores.keys()):
                 raise ValueError(f"Missing keys: {required - scores.keys()}")

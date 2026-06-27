@@ -12,6 +12,7 @@ from job_bot.database.repository import init_db, Repository
 from job_bot.database.models import Opportunity
 from job_bot.pipeline import Pipeline
 from job_bot.utils.logging import get_logger
+from job_bot.discovery.noise_filter import purge_noise
 
 logger = get_logger()
 
@@ -19,6 +20,16 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Job Bot Dashboard")
+
+
+@app.on_event("startup")
+def cleanup_noise_on_startup():
+    cfg = load_config()
+    stats = purge_noise(cfg.database.path, dry_run=False)
+    if stats.get("removed", 0) > 0:
+        logger.info("startup_noise_cleanup", removed=stats["removed"], reasons=stats.get("by_reason"))
+    else:
+        logger.info("startup_noise_cleanup", status="clean", checked=stats.get("total", 0))
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
@@ -140,7 +151,7 @@ async def opportunities_page(request: Request, category: str = "all"):
         query = session.query(Opportunity)
         if category in ("job", "startup", "grant"):
             query = query.filter(Opportunity.category == category)
-        opps = query.order_by(Opportunity.created_at.desc()).limit(100).all()
+        opps = query.order_by(Opportunity.created_at.desc()).all()
     return templates.TemplateResponse(request, "opportunities.html", {
         "opportunities": opps, "sources": sources, "page": "opportunities",
         "current_category": category,

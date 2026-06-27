@@ -36,6 +36,7 @@
             <tr>
                 <th>Title</th>
                 <th>Company</th>
+                <th>Source</th>
                 {% if current_category == 'all' %}
                 <th>Type</th>
                 {% endif %}
@@ -63,6 +64,7 @@
                 data-title="{{ opp.title or '' }}">
                 <td><div class="title-cell" title="{{ opp.title or '' }}">{{ opp.title[:80] if opp.title else '' }}</div></td>
                 <td><div class="company-cell" title="{{ opp.company or '' }}">{{ opp.company or '' }}</div></td>
+                <td><span class="source-tag">{{ opp.source or '—' }}</span></td>
                 {% if current_category == 'all' %}
                 <td><span class="cat-tag cat-{{ opp.category or 'job' }}">{{ opp.category or 'job' }}</span></td>
                 {% endif %}
@@ -111,42 +113,47 @@
 function showDetail(id) {
     fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
         document.getElementById('modal-title').textContent = opp.title;
-        let html = '<p><strong>Company:</strong> ' + opp.company + '</p>';
-        html += '<p><strong>Category:</strong> ' + opp.category + '</p>';
-        html += '<p><strong>Source:</strong> ' + opp.source + '</p>';
-        html += '<p><strong>Status:</strong> ' + opp.status + '</p>';
+        let html = '<p><strong>Company:</strong> ' + escHtml(opp.company) + '</p>';
+        html += '<p><strong>Category:</strong> ' + escHtml(opp.category) + '</p>';
+        html += '<p><strong>Source:</strong> ' + escHtml(opp.source) + '</p>';
+        html += '<p><strong>Status:</strong> ' + escHtml(opp.status) + '</p>';
         html += '<p><strong>Score:</strong> ' + (opp.score ? Math.round(opp.score*100) + '%' : '—') + '</p>';
         if (opp.category === 'startup') {
-            html += '<p><strong>Program:</strong> ' + (opp.program || '—') + '</p>';
-            html += '<p><strong>Stage:</strong> ' + (opp.stage || '—') + '</p>';
-            html += '<p><strong>Amount:</strong> ' + (opp.amount || '—') + '</p>';
+            html += '<p><strong>Program:</strong> ' + escHtml(opp.program || '—') + '</p>';
+            html += '<p><strong>Stage:</strong> ' + escHtml(opp.stage || '—') + '</p>';
+            html += '<p><strong>Amount:</strong> ' + escHtml(opp.amount || '—') + '</p>';
         }
         if (opp.category === 'grant') {
-            html += '<p><strong>Amount:</strong> ' + (opp.amount || '—') + '</p>';
+            html += '<p><strong>Amount:</strong> ' + escHtml(opp.amount || '—') + '</p>';
         }
         if (opp.category === 'job') {
-            html += '<p><strong>Location:</strong> ' + (opp.location || '—') + '</p>';
-            html += '<p><strong>Remote:</strong> ' + (opp.remote || '—') + '</p>';
+            html += '<p><strong>Location:</strong> ' + escHtml(opp.location || '—') + '</p>';
+            html += '<p><strong>Remote:</strong> ' + escHtml(opp.remote || '—') + '</p>';
         }
-        html += '<p><strong>Description:</strong></p><p>' + (opp.description || 'No description') + '</p>';
+        var desc = opp.description || 'No description';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = desc;
+        desc = tmp.textContent || tmp.innerText || desc;
+        html += '<p><strong>Description:</strong></p><p style="white-space:pre-wrap">' + escHtml(desc) + '</p>';
         html += '<div style="margin-top: 1rem;"><a href="' + opp.url + '" target="_blank" class="btn btn-primary">Open Link</a></div>';
         document.getElementById('modal-body').innerHTML = html;
         document.getElementById('detail-modal').classList.add('open');
     });
 }
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
 document.getElementById('detail-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
 
 function applyFilters() {
-    const source = document.getElementById('filter-source').value.toLowerCase();
-    const status = document.getElementById('filter-status').value.toLowerCase();
+    const source = document.getElementById('filter-source').value;
+    const status = document.getElementById('filter-status').value;
     const search = document.getElementById('filter-search').value.toLowerCase();
     let visible = 0;
     document.querySelectorAll('.opp-row').forEach(row => {
-        const matchesSource = !source || row.dataset.source.toLowerCase().includes(source);
-        const matchesStatus = !status || row.dataset.status.toLowerCase() === status;
+        const matchesSource = !source || row.dataset.source === source;
+        const matchesStatus = !status || row.dataset.status === status;
         const matchesSearch = !search || row.dataset.title.toLowerCase().includes(search);
         const show = matchesSource && matchesStatus && matchesSearch;
         row.style.display = show ? '' : 'none';
