@@ -166,52 +166,7 @@ _POSITIVE_LOCATIONS = ["africa", "rwanda", "east africa", "global", "worldwide",
 #   "AE - DACH Market"             → region in parens
 #   "SA - Saudi Arabia"            → country in parens
 
-# Character sets for separators in title patterns
-# Hyphen, en-dash (\u2013), em-dash (\u2014), horizontal bar (\u2015)
-_SEP = r"[,\s\-\u2013\u2014\u2015]"
 
-_TITLE_CITY_SUFFIX_RE = re.compile(
-    rf"""
-    {_SEP}\s*                    # separator: comma, dash, en-dash, em-dash
-    (?:(
-        (?:                         # city / country
-            san\s+francisco|new\s+york|los\s+angeles|washington\s+dc|
-            chicago|boston|denver|seattle|portland|austin|dallas|
-            houston|phoenix|miami|atlanta|detroit|minneapolis|
-            philadelphia|san\s+diego|sanjose|palo\s+alto|mountain\s+view|
-            london|paris|berlin|dublin|madrid|barcelona|munich|
-            hamburg|cologne|frankfurt|stuttgart|dusseldorf|
-            amsterdam|brussels|vienna|prague|warsaw|copenhagen|
-            stockholm|oslo|helsinki|lisbon|zurich|geneva|
-            rome|milan|turkey|istanbul|athens|
-            beijing|shanghai|hong\s+kong|tokyo|seoul|mumbai|
-            bangalore|singapore|sydney|melbourne|auckland|
-            toronto|vancouver|montreal|mexico\s+city|sao\s+paulo|
-            buenos\s+aires|bogota|santiago|lima|
-            cairo|nairobi|lagos|cape\s+town|johannesburg|
-            casablanca|tunis|accra|dakar|addis\s+ababa|kigali|
-            dubai|doha|riyadh|jeddah|tel\s+aviv|kuwait|
-        )|
-        (?:                         # region / country
-            uk|u\.k\.|u\.s\.|usa|us|
-            emea|latam|apac|dach|benelux|nordic|iberia|
-            uk\s*&\s*ireland|uk\s*&\s*europe|
-            united\s+states|united\s+kingdom|
-            australia|new\s+zealand|canada|japan|china|india|
-            singapore|hong\s+kong|south\s+korea|taiwan|
-            germany|france|spain|italy|netherlands|switzerland|
-            sweden|norway|denmark|finland|belgium|austria|
-            ireland|poland|portugal|greece|turkey|
-            saudi\s+arabia|uae|qatar|israel|
-            brazil|mexico|argentina|chile|colombia|
-            south\s+africa|nigeria|kenya|ghana|morocco|egypt|
-        )
-    )\s*(?:market|region|area)?\s*
-    (?:\([^)]*\))?                  # optional trailing paren
-    )$
-    """,
-    re.VERBOSE | re.IGNORECASE,
-)
 
 # US state abbreviations and full names for title matching
 _US_STATES = [
@@ -259,48 +214,87 @@ _POSITIVE_TITLE_MARKERS = [
     "east africa", "emea",
 ]
 
-
 def _extract_title_location(title: str) -> str | None:
     """Extract location suffix from a job title.
+
+    Uses known location keywords to avoid false positives from
+    non-location title suffixes like "Platform" or "Growth".
 
     Handles patterns like:
       "Engineer - San Francisco"     → "san francisco"
       "Manager (London)"             → "london"
       "Lead, UK"                     → "uk"
-      "AE (DACH Market)"             → "dach market"
+      "AE (DACH Market)"             → "dach"
     """
     t = title.strip()
+    if not t:
+        return None
+
     # Pattern 1: "... (Location)"  — parenthetical suffix
     m = re.search(r"\(([^)]+)\)\s*$", t)
     if m:
         loc = m.group(1).strip().lower()
-        # Clean up common suffixes
+        # Clean up common qualifiers
         loc = re.sub(r"\s+(market|region|area|based)\s*$", "", loc)
         loc = loc.strip()
         if loc and len(loc) > 1:
-            return loc
+            # Only accept if it looks like a location (known city/region/country)
+            if _looks_like_location(loc):
+                return loc
 
     # Pattern 2: "... - Location" or "... – Location" — dash suffix
-    m = re.search(r"[,\s\-\u2013\u2014\u2015]\s*([A-Za-z].*?)\s*$", t)
+    # Match: dash/emdash, optional space, then text to end
+    m = re.search(r"[\-\u2013\u2014\u2015]\s*([A-Za-z][\w\s\-]*(?:[A-Za-z])?)\s*$", t)
     if m:
         loc = m.group(1).strip().lower()
         # Remove trailing parenthetical qualifiers
         loc = re.sub(r"\s*\([^)]*\)\s*$", "", loc).strip()
-        # Clean up common words
+        # Clean up common qualifiers
         loc = re.sub(r"\s+(market|region|area|based)\s*$", "", loc)
         loc = loc.strip()
-        if loc and len(loc) > 1 and loc not in ("", "remote", "hybrid", "on-site", "onsite"):
-            return loc
+        if loc and len(loc) > 1 and loc not in ("remote", "hybrid", "on-site", "onsite", "contract", "part-time", "full-time"):
+            if _looks_like_location(loc):
+                return loc
 
     # Pattern 3: "... in Location" — "in" suffix
-    m = re.search(r"\bin\s+([A-Za-z].*?)\s*$", t)
+    m = re.search(r"\bin\s+([A-Za-z][a-z\s]*(?:[A-Za-z])?)\s*$", t)
     if m:
         loc = m.group(1).strip().lower()
         loc = re.sub(r"\s*\([^)]*\)\s*$", "", loc).strip()
-        if loc and len(loc) > 1:
+        if loc and len(loc) > 1 and _looks_like_location(loc):
             return loc
 
     return None
+
+
+def _looks_like_location(text: str) -> bool:
+    """Check if extracted text looks like a geographic location."""
+    # Check if it matches known excluded cities
+    for city in _CITIES_EXCLUDING_RWANDA:
+        if text == city or text in city or city in text:
+            return True
+    # Check if it matches known excluded regions
+    for region in _REGIONS_EXCLUDING_RWANDA:
+        if text == region:
+            return True
+    # Check if it matches known excluded countries
+    for excl in _LOCATIONS_EXCLUDING_RWANDA:
+        if len(excl) > 2 and (text == excl or excl in text):
+            return True
+    # Check if it's a US state
+    for state in _US_STATES:
+        if len(state) > 2 and text == state:
+            return True
+    # Check for known location words
+    location_keywords = [
+        "africa", "europe", "asia", "america", "oceania",
+        "east", "west", "north", "south", "central",
+        "global", "worldwide", "international", "remote",
+        "emea", "apac", "latam", "dach", "nordic",
+    ]
+    if any(kw in text for kw in location_keywords):
+        return True
+    return False
 
 
 def _title_location_is_excluded(title_lower: str) -> bool:
