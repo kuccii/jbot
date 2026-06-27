@@ -23,6 +23,7 @@ AGGREGATOR_DOMAINS = [
     "remoteafrica.io", "substack.com",
     "jobviewtrack.com",
     "linkedin.com",
+    "workingnomads.com", "4dayweek.io",
 ]
 
 # ── Job queries — direct company listings + specific boards ───────────────

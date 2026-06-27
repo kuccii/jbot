@@ -29,6 +29,7 @@ AGGREGATOR_DOMAINS = [
     "remoteafrica.io",
     "jobviewtrack.com",
     "linkedin.com",
+    "workingnomads.com", "4dayweek.io",
 ]
 
 TWITTER_PROFILE_PATTERNS = [

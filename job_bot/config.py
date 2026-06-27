@@ -57,6 +57,12 @@ class ApplicationConfig(BaseModel):
     headless: bool = True
 
 
+class ReviewConfig(BaseModel):
+    max_per_run: int = 100
+    bm25_enabled: bool = True
+    crawl4ai_enabled: bool = True
+
+
 class WhatsAppConfig(BaseModel):
     enabled: bool = False
     phone_number_id: str = ""
@@ -86,6 +92,7 @@ class Config(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     application: ApplicationConfig = Field(default_factory=ApplicationConfig)
+    review: ReviewConfig = Field(default_factory=ReviewConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 

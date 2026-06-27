@@ -25,7 +25,7 @@ class Pipeline:
         )
         self.matcher = Matcher(provider)
         self.drafter = Drafter(provider)
-        self.review_manager = ReviewManager(repo, self.matcher, self.drafter)
+        self.review_manager = ReviewManager(repo, self.matcher, self.drafter, config=config.review.model_dump())
         self.application_manager = ApplicationManager(headless=config.application.headless)
 
     async def discover(self) -> list:
