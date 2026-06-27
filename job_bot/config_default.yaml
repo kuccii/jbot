@@ -28,7 +28,7 @@ discovery:
     fellowships: true
     hackathons: true
     african_jobs: true
-    twitter: true
+    twitter: false
   companies: []
   serper_api_key: ""
   grants_keywords: []

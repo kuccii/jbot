@@ -17,6 +17,12 @@ AGGREGATOR_DOMAINS = [
     "tunga.io", "gebeya.com",
     "arc.dev", "mctaba.com",
     "youtube.com", "youtu.be",
+    "wellfound.com",
+    "himalayas.app", "rubyonremote.com",
+    "reddit.com", "remote.co", "nodesk.co",
+    "remoteafrica.io", "substack.com",
+    "jobviewtrack.com",
+    "linkedin.com",
 ]
 
 # ── Job queries — direct company listings + specific boards ───────────────

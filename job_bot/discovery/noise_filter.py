@@ -23,6 +23,12 @@ AGGREGATOR_DOMAINS = [
     "tunga.io", "gebeya.com",
     "arc.dev", "mctaba.com",
     "youtube.com", "youtu.be", "substack.com",
+    "wellfound.com",
+    "himalayas.app", "rubyonremote.com",
+    "reddit.com", "remote.co", "nodesk.co",
+    "remoteafrica.io",
+    "jobviewtrack.com",
+    "linkedin.com",
 ]
 
 TWITTER_PROFILE_PATTERNS = [
@@ -71,6 +77,9 @@ def _google_search_aggregator_only(company: Optional[str], url: str) -> bool:
         return False
     if len(company_lower) < 2:
         return True
+    # If company name itself is an aggregator
+    if any(d in company_lower for d in ("linkedin", "twitter", "reddit", "wellfound")):
+        return True
     return _url_matches_domain(url, AGGREGATOR_DOMAINS)
 
 
@@ -85,6 +94,11 @@ def check_entry(source: str, url: str, company: Optional[str], title: str) -> Op
 
     if _url_matches_domain(url, AGGREGATOR_DOMAINS):
         return f"URL contains aggregator domain"
+
+    # Check if company name matches aggregator domain (for company_pages)
+    company_lower = company.lower().strip()
+    if _url_matches_domain(company_lower, AGGREGATOR_DOMAINS):
+        return f"company matches aggregator domain"
 
     if _is_twitter_profile(url):
         return "twitter profile page (not a job tweet)"

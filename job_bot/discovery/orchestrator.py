@@ -33,9 +33,10 @@ class DiscoveryOrchestrator:
                     scraper.set_companies(self.config.get("companies", []))
                 opps = await scraper.discover(criteria)
                 for opp in opps:
-                    # Safety-net: skip known aggregator domains
+                    # Safety-net: skip known aggregator domains in either URL or company name
                     opp_url = (opp.url or "").lower()
-                    if any(d in opp_url for d in AGGREGATOR_DOMAINS):
+                    opp_company = (opp.company or "").lower()
+                    if any(d in opp_url or d in opp_company for d in AGGREGATOR_DOMAINS):
                         continue
                     # Skip opportunities where someone from Rwanda is unlikely eligible
                     if not is_rwanda_eligible(opp.title, opp.company, opp.description, "", opp.remote):

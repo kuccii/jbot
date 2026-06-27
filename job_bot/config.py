@@ -27,11 +27,27 @@ class DiscoveryConfig(BaseModel):
         "ycombinator": True, "grants": True,
         "accelerators": True, "fellowships": True,
         "hackathons": True, "african_jobs": True, "twitter": False,
+        "company_pages": True,
     })
     companies: list[str] = Field(default_factory=list)
     serper_api_key: str = ""
     grants_keywords: list[str] = Field(default_factory=list)
     sources_path: str = "data/sources.yaml"
+
+    def __init__(self, **data):
+        # Ensure all known source keys exist by merging YAML data with defaults
+        defaults = {
+            "google_search": True, "linkedin": True, "indeed": False,
+            "ycombinator": True, "grants": True,
+            "accelerators": True, "fellowships": True,
+            "hackathons": True, "african_jobs": True, "twitter": False,
+            "company_pages": True,
+        }
+        if "sources" in data and isinstance(data["sources"], dict):
+            merged = defaults.copy()
+            merged.update(data["sources"])
+            data["sources"] = merged
+        super().__init__(**data)
 
 
 class ApplicationConfig(BaseModel):
