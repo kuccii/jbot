@@ -12,10 +12,15 @@ from typing import Optional
 
 AGGREGATOR_DOMAINS = [
     "remotive.com", "remoteok.com", "weworkremotely.com",
+    "remotejobsafrica.com", "remotecareer.africa", "remoteli.com",
     "upwork.com", "toptal.com", "freelancer.com", "fiverr.com",
+    "workana.com", "peopleperhour.com", "progigfinder.com",
     "indeed.com", "ziprecruiter.com", "monster.com", "simplyhired.com",
     "glassdoor.com", "careerbuilder.com", "flexjobs.com",
     "dynamitejobs.com", "remoterocketship.com", "remote4africa.com",
+    "crossover.com", "seganrecruitment.com", "careerhound.io",
+    "globalhire360.com", "jobgether.com",
+    "tunga.io", "gebeya.com",
     "arc.dev", "mctaba.com",
     "youtube.com", "youtu.be", "substack.com",
 ]
