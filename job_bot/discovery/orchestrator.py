@@ -1,6 +1,6 @@
 from job_bot.discovery.base import SearchCriteria
 from job_bot.discovery.registry import list_scrapers, get_scraper
-from job_bot.discovery.utils import is_expired
+from job_bot.discovery.utils import is_expired, is_rwanda_eligible
 from job_bot.discovery.providers import ATS_PROVIDERS
 from job_bot.discovery.google_search import AGGREGATOR_DOMAINS
 from job_bot.database.repository import Repository
@@ -37,6 +37,9 @@ class DiscoveryOrchestrator:
                     opp_url = (opp.url or "").lower()
                     if any(d in opp_url for d in AGGREGATOR_DOMAINS):
                         continue
+                    # Skip opportunities where someone from Rwanda is unlikely eligible
+                    if not is_rwanda_eligible(opp.title, opp.company, opp.description, "", opp.remote):
+                        continue
                     norm = opp.title.lower().strip()[:100]
                     if norm in normalized_titles:
                         continue
@@ -66,6 +69,8 @@ class DiscoveryOrchestrator:
             try:
                 opps = await provider.fetch_jobs()
                 for opp in opps:
+                    if not is_rwanda_eligible(opp.title, opp.company, opp.description, opp.location, opp.remote):
+                        continue
                     norm = opp.title.lower().strip()[:100]
                     if norm in normalized_titles:
                         continue

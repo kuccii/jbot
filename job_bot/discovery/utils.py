@@ -124,6 +124,80 @@ def is_expired(deadline: datetime | None) -> bool:
     return deadline < now
 
 
+# ── Rwanda eligibility filter for all opportunities ──────────────────────────
+
+_LOCATIONS_EXCLUDING_RWANDA = [
+    "us", "usa", "united states", "uk", "united kingdom", "canada",
+    "australia", "new zealand", "singapore", "japan", "china",
+    "germany", "france", "spain", "italy", "netherlands", "switzerland",
+    "sweden", "norway", "denmark", "finland", "belgium", "austria",
+    "ireland", "poland", "portugal",
+]
+
+_VISA_BLOCK_KEYWORDS = [
+    "us work authorization", "eligible to work in the", "must be based in",
+    "must be located in", "no visa sponsorship", "cannot sponsor",
+    "us citizen", "us permanent resident", "green card",
+    "must have work authorization", "must be eligible to work",
+    "within commuting distance", "eu work permit", "uk right to work",
+]
+
+_GLOBAL_HIRE_KEYWORDS = [
+    "anywhere in the world", "work from anywhere", "global", "worldwide",
+    "remote-first", "remote first", "open to applicants from anywhere",
+]
+
+_POSITIVE_LOCATIONS = ["africa", "rwanda", "east africa", "global", "worldwide", "anywhere"]
+
+
+def is_rwanda_eligible(title: str, company: str, description: str | None, location: str | None, remote: str | None) -> bool:
+    """Check whether a person from Rwanda is likely eligible for this opportunity."""
+    title_lower = (title or "").lower()
+    desc_lower = (description or "").lower()
+    loc_lower = (location or "").lower()
+    remote_lower = (remote or "").lower()
+    company_lower = (company or "").lower()
+
+    # Fast positive — explicitly global/anywhere/africa
+    if any(kw in desc_lower for kw in ["anywhere in the world", "work from anywhere", "open to applicants from anywhere"]):
+        return True
+    if any(kw in loc_lower for kw in _POSITIVE_LOCATIONS):
+        return True
+    if remote_lower in ("worldwide", "global", "anywhere"):
+        return True
+
+    # Fast negative — location-based exclusion
+    if loc_lower:
+        parts = loc_lower.replace("(", "").replace(")", "").replace(";", ",").replace("/", ",").split(",")
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+            if part in ("remote", "fully remote", "100% remote"):
+                continue
+            if any(country in part for country in _LOCATIONS_EXCLUDING_RWANDA):
+                return False
+            if any(state in part for state in ("ny", "ca", "tx", "il", "fl", "wa", "ma", "or", "co", "dc")):
+                return False
+
+    # Fast negative — visa/authorization blocks (skip if followed by positive locations)
+    if "must be located in" in desc_lower:
+        after = desc_lower.split("must be located in", 1)[1]
+        if not any(pos in after for pos in ("africa", "rwanda", "east africa", "global", "anywhere", "worldwide")):
+            return False
+    if any(kw in desc_lower for kw in [k for k in _VISA_BLOCK_KEYWORDS if k != "must be located in"]):
+        return False
+
+    # Remote with no geographic restriction → eligible
+    if "remote" in remote_lower and not any(restriction in desc_lower for restriction in ["remote - us", "remote us", "remote in the us", "remote in us", "remote - uk", "remote uk", "remote - eu", "remote eu"]):
+        return True
+    if "remote" in title_lower and "remote" not in loc_lower:
+        return True
+
+    # Default: keep it (will be scored by AI)
+    return True
+
+
 # ── Geography filter for startup/grant opportunities ──────────────────────────
 
 _OTHER_AFRICAN_COUNTRIES = [
