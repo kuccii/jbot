@@ -245,10 +245,13 @@ _CITIES_EXCLUDING_RWANDA = [
     "sydney", "melbourne", "toronto", "vancouver", "montreal",
     "mexico city", "sao paulo", "buenos aires",
     "washington dc", "washington d.c.",
+    "nyc", "sf", "la", "manhattan", "brooklyn", "bay area",
 ]
 
 _REGIONS_EXCLUDING_RWANDA = [
     "dach", "latam", "apac", "nordic", "iberia", "benelux",
+    "amer", "cee", "aunz", "anz", "uki", "uk&i", "uk & ireland",
+    "united kingdom & ireland",
 ]
 
 _POSITIVE_TITLE_MARKERS = [
@@ -331,6 +334,12 @@ def _title_location_is_excluded(title_lower: str) -> bool:
         return True
     # Check for "u.s." pattern
     if re.search(r"\bu\.s\.", title_lower):
+        return True
+
+    # Check for "UK", "U.K." in title
+    if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])uk(?:[\s\-\u2013\u2014\u2015,.)]|$)", title_lower):
+        return True
+    if re.search(r"\bu\.k\.", title_lower):
         return True
 
     # Extract structured location from title suffix (parens, dash, comma)
