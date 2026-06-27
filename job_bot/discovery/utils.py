@@ -302,8 +302,15 @@ def _title_location_is_excluded(title_lower: str) -> bool:
 
     # Fast check: known excluded city/region in title
     for city in _CITIES_EXCLUDING_RWANDA:
-        if city in title_lower:
-            return True
+        if len(city) <= 3:
+            # Short names (la, sf, nyc) need word-boundary matching to avoid
+            # false positives like "platform" matching "la" or "transformation" matching "sf"
+            if re.search(r"(?:^|[,\s(\-\u2013\u2014\u2015])" + re.escape(city) + r"(?:[,\s)\-\u2013\u2014\u2015]|$)", title_lower):
+                return True
+        else:
+            # Longer names can use substring matching safely
+            if city in title_lower:
+                return True
 
     # Fast check: known excluded regions (DACH, LATAM, APAC, etc.)
     for region in _REGIONS_EXCLUDING_RWANDA:
