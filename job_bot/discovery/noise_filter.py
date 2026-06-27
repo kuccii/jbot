@@ -30,6 +30,11 @@ AGGREGATOR_DOMAINS = [
     "jobviewtrack.com",
     "linkedin.com",
     "workingnomads.com", "4dayweek.io",
+    # Aggregator / meta-roundup sites that don't list actual jobs
+    "opportunitiesforafricans.com", "opportunitydesk.org",
+    "invest-for-jobs.com", "menterprise.africa",
+    "fundsforngos.org",
+    "anzishaprize.org", "mastercardfoundation.org",
 ]
 
 TWITTER_PROFILE_PATTERNS = [

@@ -132,6 +132,11 @@ _LOCATIONS_EXCLUDING_RWANDA = [
     "germany", "france", "spain", "italy", "netherlands", "switzerland",
     "sweden", "norway", "denmark", "finland", "belgium", "austria",
     "ireland", "poland", "portugal",
+    # Additional non-Rwanda countries
+    "south korea", "taiwan", "india", "indonesia", "malaysia",
+    "philippines", "thailand", "vietnam", "israel", "uae",
+    "united arab emirates", "qatar", "saudi arabia",
+    "brazil", "argentina", "chile", "colombia", "mexico",
 ]
 
 _VISA_BLOCK_KEYWORDS = [
@@ -140,14 +145,206 @@ _VISA_BLOCK_KEYWORDS = [
     "us citizen", "us permanent resident", "green card",
     "must have work authorization", "must be eligible to work",
     "within commuting distance", "eu work permit", "uk right to work",
+    "we are unable to sponsor", "not able to sponsor",
+    "must already have work authorization",
+    "must be legally authorized", "employment eligibility",
 ]
 
 _GLOBAL_HIRE_KEYWORDS = [
     "anywhere in the world", "work from anywhere", "global", "worldwide",
     "remote-first", "remote first", "open to applicants from anywhere",
+    "fully remote", "100% remote",
 ]
 
-_POSITIVE_LOCATIONS = ["africa", "rwanda", "east africa", "global", "worldwide", "anywhere"]
+_POSITIVE_LOCATIONS = ["africa", "rwanda", "east africa", "global", "worldwide", "anywhere", "emea"]
+
+# ── Title-based location pattern extraction ──────────────────────────────────
+# Many ATS entries have location only in the title, e.g.:
+#   "Engineer - San Francisco"     → dash suffix
+#   "Manager (London)"             → paren suffix
+#   "Lead, UK"                     → comma suffix
+#   "AE - DACH Market"             → region in parens
+#   "SA - Saudi Arabia"            → country in parens
+
+_TITLE_CITY_SUFFIX_RE = re.compile(
+    r"""
+    [,\s–—-]\s*                    # separator: comma, dash, en-dash, em-dash
+    (?:(
+        (?:                         # city / country
+            san\s+francisco|new\s+york|los\s+angeles|washington\s+dc|
+            chicago|boston|denver|seattle|portland|austin|dallas|
+            houston|phoenix|miami|atlanta|detroit|minneapolis|
+            philadelphia|san\s+diego|sanjose|palo\s+alto|mountain\s+view|
+            london|paris|berlin|dublin|madrid|barcelona|munich|
+            hamburg|cologne|frankfurt|stuttgart|dusseldorf|
+            amsterdam|brussels|vienna|prague|warsaw|copenhagen|
+            stockholm|oslo|helsinki|lisbon|zurich|geneva|
+            rome|milan|turkey|istanbul|athens|
+            beijing|shanghai|hong\s+kong|tokyo|seoul|mumbai|
+            bangalore|singapore|sydney|melbourne|auckland|
+            toronto|vancouver|montreal|mexico\s+city|sao\s+paulo|
+            buenos\s+aires|bogota|santiago|lima|
+            cairo|nairobi|lagos|cape\s+town|johannesburg|
+            casablanca|tunis|accra|dakar|addis\s+ababa|kigali|
+            dubai|doha|riyadh|jeddah|tel\s+aviv|kuwait|
+        )|
+        (?:                         # region / country
+            uk|u\.k\.|u\.s\.|usa|us|
+            emea|latam|apac|dach|benelux|nordic|iberia|
+            uk\s*&\s*ireland|uk\s*&\s*europe|
+            united\s+states|united\s+kingdom|
+            australia|new\s+zealand|canada|japan|china|india|
+            singapore|hong\s+kong|south\s+korea|taiwan|
+            germany|france|spain|italy|netherlands|switzerland|
+            sweden|norway|denmark|finland|belgium|austria|
+            ireland|poland|portugal|greece|turkey|
+            saudi\s+arabia|uae|qatar|israel|
+            brazil|mexico|argentina|chile|colombia|
+            south\s+africa|nigeria|kenya|ghana|morocco|egypt|
+        )
+    )\s*(?:market|region|area)?\s*
+    (?:\([^)]*\))?                  # optional trailing paren
+    )$
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+# US state abbreviations and full names for title matching
+_US_STATES = [
+    "al", "ak", "az", "ar", "ca", "co", "ct", "de", "fl", "ga",
+    "hi", "id", "il", "in", "ia", "ks", "ky", "la", "me", "md",
+    "ma", "mi", "mn", "ms", "mo", "mt", "ne", "nv", "nh", "nj",
+    "nm", "ny", "nc", "nd", "oh", "ok", "or", "pa", "ri", "sc",
+    "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv", "wi", "wy",
+    # full names
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+    "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+    "maine", "maryland", "massachusetts", "michigan", "minnesota",
+    "mississippi", "missouri", "montana", "nebraska", "nevada",
+    "new hampshire", "new jersey", "new mexico", "new york",
+    "north carolina", "north dakota", "ohio", "oklahoma", "oregon",
+    "pennsylvania", "rhode island", "south carolina", "south dakota",
+    "tennessee", "texas", "utah", "vermont", "virginia", "washington",
+    "west virginia", "wisconsin", "wyoming",
+]
+
+# Cities that strongly imply US/EU location and are unlikely to offer visa sponsorship
+_CITIES_EXCLUDING_RWANDA = [
+    "san francisco", "new york", "los angeles", "chicago", "boston",
+    "denver", "seattle", "portland", "austin", "dallas", "houston",
+    "miami", "atlanta", "phoenix", "detroit", "san diego",
+    "london", "paris", "berlin", "dublin", "madrid", "barcelona",
+    "munich", "amsterdam", "brussels", "stockholm", "copenhagen",
+    "oslo", "helsinki", "zurich", "geneva", "rome", "milan",
+    "beijing", "shanghai", "hong kong", "tokyo", "seoul", "singapore",
+    "sydney", "melbourne", "toronto", "vancouver", "montreal",
+    "mexico city", "sao paulo", "buenos aires",
+    "washington dc", "washington d.c.",
+]
+
+_REGIONS_EXCLUDING_RWANDA = [
+    "dach", "latam", "apac", "nordic", "iberia", "benelux",
+]
+
+_POSITIVE_TITLE_MARKERS = [
+    "remote", "anywhere", "global", "worldwide", "africa",
+    "east africa", "emea",
+]
+
+
+def _extract_title_location(title: str) -> str | None:
+    """Extract location suffix from a job title.
+
+    Handles patterns like:
+      "Engineer - San Francisco"     → "san francisco"
+      "Manager (London)"             → "london"
+      "Lead, UK"                     → "uk"
+      "AE (DACH Market)"             → "dach market"
+    """
+    t = title.strip()
+    # Pattern 1: "... (Location)"  — parenthetical suffix
+    m = re.search(r"\(([^)]+)\)\s*$", t)
+    if m:
+        loc = m.group(1).strip().lower()
+        # Clean up common suffixes
+        loc = re.sub(r"\s+(market|region|area|based)\s*$", "", loc)
+        loc = loc.strip()
+        if loc and len(loc) > 1:
+            return loc
+
+    # Pattern 2: "... - Location" or "... – Location" — dash suffix
+    m = re.search(r"[,\s–—-–—]\s*([A-Za-z].*?)\s*$", t)
+    if m:
+        loc = m.group(1).strip().lower()
+        # Remove trailing parenthetical qualifiers
+        loc = re.sub(r"\s*\([^)]*\)\s*$", "", loc).strip()
+        # Clean up common words
+        loc = re.sub(r"\s+(market|region|area|based)\s*$", "", loc)
+        loc = loc.strip()
+        if loc and len(loc) > 1 and loc not in ("", "remote", "hybrid", "on-site", "onsite"):
+            return loc
+
+    # Pattern 3: "... in Location" — "in" suffix
+    m = re.search(r"\bin\s+([A-Za-z].*?)\s*$", t)
+    if m:
+        loc = m.group(1).strip().lower()
+        loc = re.sub(r"\s*\([^)]*\)\s*$", "", loc).strip()
+        if loc and len(loc) > 1:
+            return loc
+
+    return None
+
+
+def _title_location_is_excluded(title_lower: str) -> bool:
+    """Check if the title contains a location that makes it ineligible."""
+
+    # Fast check: known excluded city/region in title
+    for city in _CITIES_EXCLUDING_RWANDA:
+        if city in title_lower:
+            return True
+
+    # Fast check: known excluded regions (DACH, LATAM, APAC, etc.)
+    for region in _REGIONS_EXCLUDING_RWANDA:
+        if re.search(r"(?:^|[,\s(\-–—])" + re.escape(region) + r"(?:[,\s)\-–—]|$)", title_lower):
+            return True
+
+    # Fast check: US state in title (word-boundary matched)
+    for state in _US_STATES:
+        if re.search(r"(?:^|[,\s(\-–—])" + re.escape(state) + r"(?:[,\s)\-–—]|$)", title_lower):
+            return True
+
+    # Check for country/region names directly in title (word-boundary matched)
+    for excl in _LOCATIONS_EXCLUDING_RWANDA:
+        if len(excl) > 2:  # skip short entries like "us", "uk" that might match embedded
+            if re.search(r"(?:^|[,\s(\-–—])" + re.escape(excl) + r"(?:[,\s)\-–—]|$)", title_lower):
+                return True
+
+    # Check for "US-based", "US only", "US remote", etc.
+    # Match "us" as a word with trailing separator, avoiding false positives
+    # like "focus", "museum", "bus", "just", "plus"
+    if re.search(r"(?:^|[,\s(\-–—])us(?:[\s\-–—,.)]|$)", title_lower) and not re.search(r"\b(?:us\s*dollar|usd|united\s+states\s+(of\s+)?africa)", title_lower):
+        return True
+    # Check for "u.s." pattern
+    if re.search(r"\bu\.s\.", title_lower):
+        return True
+
+    # Extract structured location from title suffix (parens, dash, comma)
+    extracted = _extract_title_location(title_lower)
+    if extracted:
+        # Check if extracted location is an exact match for excluded countries
+        if extracted in [c.lower() for c in _LOCATIONS_EXCLUDING_RWANDA]:
+            return True
+        # Check if it contains an excluded country/region name
+        for excl in _LOCATIONS_EXCLUDING_RWANDA:
+            if excl in extracted:
+                return True
+        # Check if extracted location is a city
+        for city in _CITIES_EXCLUDING_RWANDA:
+            if city in extracted or extracted in city:
+                return True
+
+    return False
 
 
 def is_rwanda_eligible(title: str, company: str, description: str | None, location: str | None, remote: str | None) -> bool:
@@ -165,8 +362,18 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
         return True
     if remote_lower in ("worldwide", "global", "anywhere"):
         return True
+    # Check title for positive location markers
+    for marker in _POSITIVE_TITLE_MARKERS:
+        if marker in title_lower:
+            # Only if not also location-locked (e.g., "Remote - US" should still fail)
+            if not re.search(r"remote[\s\-–—]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
+                return True
 
-    # Fast negative — location-based exclusion
+    # Fast negative — title-based location exclusion
+    if _title_location_is_excluded(title_lower):
+        return False
+
+    # Fast negative — location-based exclusion (if location field is populated)
     if loc_lower:
         parts = loc_lower.replace("(", "").replace(")", "").replace(";", ",").replace("/", ",").split(",")
         for part in parts:
@@ -192,7 +399,9 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
     if "remote" in remote_lower and not any(restriction in desc_lower for restriction in ["remote - us", "remote us", "remote in the us", "remote in us", "remote - uk", "remote uk", "remote - eu", "remote eu"]):
         return True
     if "remote" in title_lower and "remote" not in loc_lower:
-        return True
+        # Double-check it's not "Remote - US" style
+        if not re.search(r"remote[\s\-–—]+(us|usa|uk|canada|eu|europe|australia)", title_lower):
+            return True
 
     # Default: keep it (will be scored by AI)
     return True
