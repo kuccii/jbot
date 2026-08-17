@@ -1,0 +1,77 @@
+"""Discovery orchestrator: run boards, filter for Rwanda eligibility + keyword
+relevance, store to SQLite, and report results."""
+
+from __future__ import annotations
+
+import asyncio
+import sys
+
+from job_hunter import eligibility
+from job_hunter.boards.base import Board
+from job_hunter.boards.remoteok import RemoteOKBoard
+from job_hunter.boards.remote4africa import Remote4AfricaBoard
+from job_hunter.boards.weworkremotely import WeWorkRemotelyBoard
+from job_hunter.boards.himalayas import HimalayasBoard
+from job_hunter.boards.remotive import RemotiveBoard
+from job_hunter.config import Config
+from job_hunter.models import Job, Store
+
+BOARDS: dict[str, type[Board]] = {
+    "remoteok": RemoteOKBoard,
+    "remote4africa": Remote4AfricaBoard,
+    "weworkremotely": WeWorkRemotelyBoard,
+    "himalayas": HimalayasBoard,
+    "remotive": RemotiveBoard,
+}
+
+
+def _log(msg: str) -> None:
+    print(msg, file=sys.stderr)
+
+
+def _make_board(name: str, cfg: Config) -> Board:
+    if name == "remoteok":
+        return RemoteOKBoard(tags=cfg.keywords)
+    if name in BOARDS:
+        return BOARDS[name]()
+    raise ValueError(f"Unknown board: {name}")
+
+
+async def _run_board(name: str, store: Store, cfg: Config) -> dict:
+    board = _make_board(name, cfg)
+    try:
+        jobs = await board.fetch(limit=cfg.max_jobs_per_board)
+    except Exception as exc:
+        return {"board": name, "fetched": 0, "error": f"{type(exc).__name__}: {exc}"}
+
+    added = eligible = 0
+    for job in jobs:
+        ok, note = eligibility.check_eligibility(job)
+        if not ok:
+            continue  # store only Rwanda-eligible roles
+        if not eligibility.matches_keywords(job, cfg.keywords):
+            continue
+        eligible += 1
+        result = store.add_job(job, ok, note)
+        if result == "new":
+            added += 1
+
+    return {
+        "board": name,
+        "fetched": len(jobs),
+        "eligible": eligible,
+        "added": added,
+        "error": None,
+    }
+
+
+async def discover(cfg: Config) -> list[dict]:
+    store = Store(cfg.database)
+    results = await asyncio.gather(
+        *(_run_board(name, store, cfg) for name, enabled in cfg.boards.items() if enabled)
+    )
+    return results
+
+
+def run_discover(cfg: Config) -> list[dict]:
+    return asyncio.run(discover(cfg))

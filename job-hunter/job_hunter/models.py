@@ -1,0 +1,137 @@
+"""Data model + SQLite storage for job-hunter.
+
+Uses only the standard library — no ORM, keeps the project clean.
+"""
+
+import sqlite3
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+@dataclass
+class Job:
+    title: str
+    company: str
+    url: str
+    board: str
+    location: str = ""
+    remote: str = ""
+    tags: str = ""
+    description: str = ""
+    posted_at: str = ""
+    # Countries explicitly listed as eligible (e.g. Remote4Africa).
+    eligible_countries: list[str] = field(default_factory=list)
+
+    def as_dict(self) -> dict:
+        return {
+            "title": self.title,
+            "company": self.company,
+            "url": self.url,
+            "board": self.board,
+            "location": self.location,
+            "remote": self.remote,
+            "tags": self.tags,
+            "description": self.description,
+            "posted_at": self.posted_at,
+            "eligible_countries": ",".join(self.eligible_countries),
+        }
+
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    company TEXT NOT NULL,
+    url TEXT UNIQUE NOT NULL,
+    board TEXT NOT NULL,
+    location TEXT DEFAULT '',
+    remote TEXT DEFAULT '',
+    tags TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    posted_at TEXT DEFAULT '',
+    eligible_countries TEXT DEFAULT '',
+    eligible INTEGER DEFAULT 0,
+    eligibility_note TEXT DEFAULT '',
+    status TEXT DEFAULT 'new',
+    found_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_jobs_board ON jobs(board);
+CREATE INDEX IF NOT EXISTS ix_jobs_status ON jobs(status);
+"""
+
+
+class Store:
+    def __init__(self, db_path: str):
+        path = Path(db_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(str(path))
+        self.conn.row_factory = sqlite3.Row
+        self.conn.executescript(SCHEMA)
+        self.conn.commit()
+
+    def add_job(self, job: Job, eligible: bool, note: str) -> str:
+        """Insert if new. Returns 'new', 'exists', or 'duplicate'."""
+        cur = self.conn.execute(
+            "SELECT id FROM jobs WHERE url = ?", (job.url,)
+        )
+        if cur.fetchone():
+            return "exists"
+        self.conn.execute(
+            """INSERT INTO jobs
+               (title, company, url, board, location, remote, tags, description,
+                posted_at, eligible_countries, eligible, eligibility_note, status, found_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                job.title, job.company, job.url, job.board, job.location,
+                job.remote, job.tags, job.description, job.posted_at,
+                ",".join(job.eligible_countries),
+                1 if eligible else 0, note, "new",
+                datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            ),
+        )
+        self.conn.commit()
+        return "new"
+
+    def list_jobs(self, board: str | None = None, eligible_only: bool = True,
+                  status: str | None = None, limit: int = 100) -> list[sqlite3.Row]:
+        query = "SELECT * FROM jobs"
+        clauses, params = [], []
+        if eligible_only:
+            clauses.append("eligible = 1")
+        if board:
+            clauses.append("board = ?")
+            params.append(board)
+        if status:
+            clauses.append("status = ?")
+            params.append(status)
+        if clauses:
+            query += " WHERE " + " AND ".join(clauses)
+        query += " ORDER BY found_at DESC LIMIT ?"
+        params.append(limit)
+        return self.conn.execute(query, params).fetchall()
+
+    def stats(self) -> dict:
+        total = self.conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+        eligible = self.conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE eligible = 1"
+        ).fetchone()[0]
+        by_board = {
+            r["board"]: r["n"]
+            for r in self.conn.execute(
+                "SELECT board, COUNT(*) AS n FROM jobs GROUP BY board ORDER BY n DESC"
+            )
+        }
+        return {"total": total, "eligible": eligible, "by_board": by_board}
+
+    def mark(self, job_id: int, status: str) -> bool:
+        cur = self.conn.execute(
+            "UPDATE jobs SET status = ? WHERE id = ?", (status, job_id)
+        )
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def purge(self, status: str = "hidden") -> int:
+        cur = self.conn.execute("DELETE FROM jobs WHERE status = ?", (status,))
+        self.conn.commit()
+        return cur.rowcount
