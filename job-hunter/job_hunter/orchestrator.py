@@ -50,7 +50,7 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
     except Exception as exc:
         return {"board": name, "fetched": 0, "error": f"{type(exc).__name__}: {exc}"}
 
-    added = eligible = 0
+    added = eligible = duplicates = 0
     for job in jobs:
         ok, note = eligibility.check_eligibility(job)
         if not ok:
@@ -61,12 +61,15 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
         result = store.add_job(job, ok, note)
         if result == "new":
             added += 1
+        elif result == "duplicate":
+            duplicates += 1
 
     return {
         "board": name,
         "fetched": len(jobs),
         "eligible": eligible,
         "added": added,
+        "duplicates": duplicates,
         "error": None,
     }
 

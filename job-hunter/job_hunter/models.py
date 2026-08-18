@@ -3,10 +3,20 @@
 Uses only the standard library — no ORM, keeps the project clean.
 """
 
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def _norm_key(text: str) -> str:
+    """Normalize a string for cross-board duplicate matching.
+
+    Lowercases, strips punctuation, and collapses whitespace so
+    "Senior, AI Engineer (Remote)" and "senior AI engineer remote" match.
+    """
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", text.lower())).strip()
 
 
 @dataclass
@@ -71,12 +81,33 @@ class Store:
         self.conn.commit()
 
     def add_job(self, job: Job, eligible: bool, note: str) -> str:
-        """Insert if new. Returns 'new', 'exists', or 'duplicate'."""
+        """Insert if new. Returns 'new', 'exists', or 'duplicate'.
+
+        'exists'  — the exact URL was already stored (same board re-fetch).
+        'duplicate' — a job with the same normalized title + company was
+        already stored from another board (cross-board dedup). Same-company
+        postings of genuinely different roles survive because the title key
+        differs. Jobs with no company name skip the cross-board check.
+        """
         cur = self.conn.execute(
             "SELECT id FROM jobs WHERE url = ?", (job.url,)
         )
         if cur.fetchone():
             return "exists"
+
+        if job.company.strip():
+            n_title = _norm_key(job.title)
+            n_company = _norm_key(job.company)
+            for row in self.conn.execute(
+                "SELECT title, company FROM jobs WHERE lower(company) = lower(?)",
+                (job.company,),
+            ):
+                if (
+                    _norm_key(row["title"]) == n_title
+                    and _norm_key(row["company"]) == n_company
+                ):
+                    return "duplicate"
+
         self.conn.execute(
             """INSERT INTO jobs
                (title, company, url, board, location, remote, tags, description,
