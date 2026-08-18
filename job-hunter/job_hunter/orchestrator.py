@@ -16,6 +16,7 @@ from job_hunter.boards.remotive import RemotiveBoard
 from job_hunter.boards.persona import PersonaBoard
 from job_hunter.boards.workingnomads import WorkingNomadsBoard
 from job_hunter.boards.jobicy import JobicyBoard
+from job_hunter.boards.ats import ATSBoard
 from job_hunter.config import Config
 from job_hunter.models import Job, Store
 
@@ -28,6 +29,7 @@ BOARDS: dict[str, type[Board]] = {
     "persona": PersonaBoard,
     "workingnomads": WorkingNomadsBoard,
     "jobicy": JobicyBoard,
+    "ats": ATSBoard,
 }
 
 
@@ -38,6 +40,8 @@ def _log(msg: str) -> None:
 def _make_board(name: str, cfg: Config) -> Board:
     if name == "remoteok":
         return RemoteOKBoard(tags=cfg.keywords)
+    if name == "ats":
+        return ATSBoard(companies=[c.model_dump() for c in cfg.ats_companies])
     if name in BOARDS:
         return BOARDS[name]()
     raise ValueError(f"Unknown board: {name}")

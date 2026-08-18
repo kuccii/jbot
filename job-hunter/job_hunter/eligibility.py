@@ -5,11 +5,14 @@ A job is eligible if it can realistically be done from Rwanda:
      -> eligible iff "Rwanda" is listed, OR a broader region that includes
         Rwanda is listed ("Africa", "East Africa", "EMEA", "Worldwide", ...).
         NOT eligible if the list names only specific other countries.
-  2. Otherwise we infer from the location/region text:
-     -> eligible if worldwide-remote ("anywhere", "worldwide", "global", "🌏")
-        or the location names Africa / East Africa / Rwanda / Kigali.
-     -> NOT eligible if the location is explicitly restricted elsewhere
-        ("USA only", "Canada", "Europe", "UK only", "onsite", "hybrid", ...).
+  2. Otherwise we infer from the location/region text. The location is judged
+     after stripping remote-flavored words ("remote", "fully remote", ...):
+     -> eligible if what remains is empty (location was only "remote"), or
+        names Africa / East Africa / Rwanda / Kigali / EMEA, or a worldwide
+        region ("worldwide", "global", "anywhere", ...).
+     -> NOT eligible if what remains names a specific place ("Remote, Italy",
+        "New York", "APAC", "Remote (UK)", ...) or a physical-role signal
+        ("onsite", "hybrid", "in-person", ...).
   3. RemoteOK's feed mixes in physical/onsite roles, so a bare city location
      is NOT treated as eligible — only remote/worldwide/Africa signals (or an
      empty location) pass.
@@ -21,13 +24,41 @@ import re
 
 from job_hunter.models import Job
 
-# Words that mean "restricted to a specific country/region" -> not eligible.
+# Remote-flavored words stripped before judging the remaining location text.
+REMOTE_WORDS = [
+    "100% remote", "fully remote", "work from anywhere", "remote-first",
+    "remote", "remoto", "telecommute", "telework",
+]
+
+# Words that mean "open to anyone, anywhere".
+GLOBAL = [
+    "anywhere", "worldwide", "global", "any country", "all countries",
+    "🌏", "international", "emea", "middle east and africa",
+]
+
+# Physical-role / country-restriction signals in the remaining text.
 RESTRICTED = [
-    "usa", "united states", "u.s.", "us only", "canada", "uk only",
-    "united kingdom", "europe", "eu only", "australia", "new zealand",
-    "singapore", "japan", "germany only", "france only", "onsite",
-    "on-site", "in-person", "hybrid", "must be based in", "must be located",
-    "us-based", "based in the us", "european union",
+    "onsite", "on-site", "in-person", "hybrid", "must be based in",
+    "must be located", "must reside", "based in", "only",
+    "usa", "united states", "u.s.", "canada", "united kingdom",
+    "europe", "eu only", "european union", "apac", "latam", "nordics",
+    "italy", "germany", "france", "spain", "netherlands", "poland",
+    "portugal", "belgium", "austria", "switzerland", "sweden", "norway",
+    "denmark", "finland", "ireland", "greece", "ukraine", "romania",
+    "czech", "hungary", "bulgaria", "croatia", "serbia", "slovakia",
+    "slovenia", "estonia", "latvia", "lithuania", "luxembourg", "iceland",
+    "malta", "cyprus", "russia", "belarus", "kazakhstan",
+    "mexico", "brazil", "argentina", "colombia", "chile", "peru",
+    "india", "pakistan", "bangladesh", "sri lanka", "china", "hong kong",
+    "taiwan", "japan", "south korea", "vietnam", "thailand", "philippines",
+    "indonesia", "malaysia", "singapore", "australia", "new zealand",
+    "uae", "dubai", "israel", "turkey", "saudi arabia", "qatar",
+    "kuwait", "bahrain", "oman", "jordan", "lebanon", "egypt",
+    "new york", "san francisco", "london", "berlin", "paris", "amsterdam",
+    "cardiff", "sydney", "melbourne", "toronto", "austin", "seattle",
+    "los angeles", "chicago", "boston", "singapore", "tokyo", "bengaluru",
+    "bangalore", "mumbai", "lagos", "nairobi", "accra", "cairo", "joburg",
+    "cape town", "dubai", "riyadh", "kigali",
 ]
 
 # Words that mean "open to anyone, anywhere" -> eligible.
@@ -48,14 +79,17 @@ RWANDA_OR_BROADER = [
     "remote",
 ]
 
-_RESTRICTED_RE = re.compile(
-    r"|".join(re.escape(w) for w in RESTRICTED), re.IGNORECASE
+_REMOTE_WORDS_RE = re.compile(
+    r"|".join(re.escape(w) for w in REMOTE_WORDS), re.IGNORECASE
 )
-_WORLDWIDE_RE = re.compile(
-    r"|".join(re.escape(w) for w in WORLDWIDE), re.IGNORECASE
+_GLOBAL_RE = re.compile(
+    r"|".join(re.escape(w) for w in GLOBAL), re.IGNORECASE
 )
 _AFRICA_RE = re.compile(
     r"|".join(re.escape(w) for w in AFRICA), re.IGNORECASE
+)
+_RESTRICTED_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(w) for w in RESTRICTED) + r")\b", re.IGNORECASE
 )
 
 
@@ -85,11 +119,25 @@ def check_eligibility(job: Job) -> tuple[bool, str]:
             return True, "no location listed (remote board)"
         return False, "unknown location"
 
-    if _WORLDWIDE_RE.search(loc) and not _RESTRICTED_RE.search(loc):
-        return True, "remote / worldwide"
-    if _AFRICA_RE.search(loc):
+    # Strip remote-flavored words, then judge whatever place remains:
+    #   "Remote"               -> ""           -> eligible
+    #   "Remote, Italy"        -> "italy"      -> not eligible
+    #   "New York, NY Remote"  -> "new york ny" -> not eligible
+    #   "Remote, Worldwide"    -> "worldwide"  -> eligible
+    #   "Remote, EMEA"         -> "emea"       -> eligible
+    remainder = _REMOTE_WORDS_RE.sub(" ", loc)
+    remainder = " ".join(remainder.split())
+
+    if not remainder:
+        return True, "remote / no location restriction"
+
+    if _AFRICA_RE.search(remainder):
         return True, f"location mentions Africa/East Africa: {loc[:60]}"
-    if _RESTRICTED_RE.search(loc):
+
+    if _GLOBAL_RE.search(remainder):
+        return True, f"worldwide: {loc[:60]}"
+
+    if _RESTRICTED_RE.search(remainder):
         return False, f"restricted location: {loc[:60]}"
 
     return False, f"location-specific: {loc[:60]}"

@@ -13,6 +13,7 @@ from job_hunter.boards.remotive import RemotiveBoard
 from job_hunter.boards.persona import PersonaBoard
 from job_hunter.boards.workingnomads import WorkingNomadsBoard
 from job_hunter.boards.jobicy import JobicyBoard
+from job_hunter.boards.ats import ATSBoard
 
 REMOTE_OK_PAYLOAD = [
     {"_metadata": "ignore me"},
@@ -398,3 +399,145 @@ async def test_jobicy_parses_anywhere_as_worldwide():
     assert "Software Engineering" in jobs[0].tags
     assert jobs[1].location == "USA"
     assert jobs[1].remote == ""  # country-restricted
+
+
+# ── ATS direct company postings ────────────────────────────────────────
+
+GREENHOUSE_PAYLOAD = {
+    "jobs": [
+        {
+            "id": 1,
+            "title": "Remote Engineer",
+            "company_name": "GitLab",
+            "location": {"name": "Remote, Italy"},
+            "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/1",
+            "content": "<p>Build things.</p>",
+            "first_published": "2026-08-17T00:00:00Z",
+        },
+        {
+            "id": 2,
+            "title": "Kigali Field Agent",
+            "company_name": "GitLab",
+            "location": {"name": "Kigali, Rwanda"},
+            "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/2",
+            "content": "",
+            "first_published": "2026-08-16T00:00:00Z",
+        },
+        {
+            "id": 3,
+            "title": "NYC Only Role",
+            "company_name": "GitLab",
+            "location": {"name": "New York, NY"},
+            "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/3",
+            "content": "",
+            "first_published": "",
+        },
+    ]
+}
+
+ASHBY_PAYLOAD = {
+    "jobs": [
+        {
+            "id": "a",
+            "title": "Product Engineer",
+            "department": "Engineering",
+            "location": "Americas / Remote / Full-time",
+            "isRemote": True,
+            "jobUrl": "https://jobs.ashbyhq.com/resend/a",
+            "descriptionPlain": "Ship product.",
+            "publishedAt": "2026-08-17T00:00:00Z",
+            "isListed": True,
+        },
+        {
+            "id": "b",
+            "title": "Office Manager Berlin",
+            "department": "Ops",
+            "location": "Berlin, Germany",
+            "isRemote": False,
+            "jobUrl": "https://jobs.ashbyhq.com/resend/b",
+            "descriptionPlain": "Run the office.",
+            "publishedAt": "",
+            "isListed": True,
+        },
+    ]
+}
+
+SMARTRECRUITERS_PAYLOAD = {
+    "content": [
+        {
+            "id": "x",
+            "name": "Brand Designer",
+            "location": {"city": "Remote", "region": "REMOTE", "country": "", "remote": True, "fullLocation": "Remote"},
+            "url": "https://jobs.smartrecruiters.com/Canva/x",
+            "releasedDate": "2026-08-17T00:00:00Z",
+        },
+        {
+            "id": "y",
+            "name": "Sydney Office Designer",
+            "location": {"city": "Sydney", "region": "NSW", "country": "au", "remote": False, "fullLocation": "Sydney, NSW, Australia"},
+            "url": "https://jobs.smartrecruiters.com/Canva/y",
+            "releasedDate": "",
+        },
+    ]
+}
+
+
+@pytest.mark.asyncio
+async def test_ats_greenhouse_parses_location():
+    def handler(request):
+        return httpx.Response(200, json=GREENHOUSE_PAYLOAD)
+
+    board = ATSBoard(companies=[{"name": "GitLab", "ats": "greenhouse", "slug": "gitlab"}],
+                     transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 3
+    assert jobs[0].title == "Remote Engineer"
+    assert jobs[0].company == "GitLab"
+    assert jobs[0].location == "Remote, Italy"
+    assert jobs[0].remote == "Remote"
+    assert jobs[0].board == "ats"
+    assert jobs[1].location == "Kigali, Rwanda"
+    assert jobs[2].remote == ""  # onsite, no remote marker
+
+
+@pytest.mark.asyncio
+async def test_ats_ashby_parses_isremote():
+    def handler(request):
+        return httpx.Response(200, json=ASHBY_PAYLOAD)
+
+    board = ATSBoard(companies=[{"name": "Resend", "ats": "ashby", "slug": "resend"}],
+                     transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 2
+    assert jobs[0].title == "Product Engineer"
+    assert jobs[0].location == "Americas / Remote / Full-time"
+    assert jobs[0].remote == "Remote"
+    assert "Engineering" in jobs[0].tags
+    assert jobs[1].remote == ""  # isRemote False
+
+
+@pytest.mark.asyncio
+async def test_ats_smartrecruiters_parses_remote_flag():
+    def handler(request):
+        return httpx.Response(200, json=SMARTRECRUITERS_PAYLOAD)
+
+    board = ATSBoard(companies=[{"name": "Canva", "ats": "smartrecruiters", "slug": "canva"}],
+                     transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 2
+    assert jobs[0].title == "Brand Designer"
+    assert jobs[0].location == "Remote"
+    assert jobs[0].remote == "Remote"
+    assert jobs[1].location == "Sydney, NSW, Australia"
+    assert jobs[1].remote == ""
+
+
+@pytest.mark.asyncio
+async def test_ats_fails_one_company_keeps_others():
+    def handler(request):
+        return httpx.Response(500)
+
+    board = ATSBoard(companies=[{"name": "Broken", "ats": "greenhouse", "slug": "nope"}],
+                     transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert jobs == []  # graceful failure, no exception

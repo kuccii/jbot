@@ -13,6 +13,7 @@ from job_hunter.boards.remotive import RemotiveBoard
 from job_hunter.boards.persona import PersonaBoard
 from job_hunter.boards.workingnomads import WorkingNomadsBoard
 from job_hunter.boards.jobicy import JobicyBoard
+from job_hunter.boards.ats import ATSBoard
 
 BOARDS: dict[str, Board] = {
     "remoteok": RemoteOKBoard(),
@@ -23,4 +24,5 @@ BOARDS: dict[str, Board] = {
     "persona": PersonaBoard(),
     "workingnomads": WorkingNomadsBoard(),
     "jobicy": JobicyBoard(),
+    "ats": ATSBoard(),
 }
