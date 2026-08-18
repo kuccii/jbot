@@ -13,6 +13,9 @@ from job_hunter.boards.remote4africa import Remote4AfricaBoard
 from job_hunter.boards.weworkremotely import WeWorkRemotelyBoard
 from job_hunter.boards.himalayas import HimalayasBoard
 from job_hunter.boards.remotive import RemotiveBoard
+from job_hunter.boards.persona import PersonaBoard
+from job_hunter.boards.workingnomads import WorkingNomadsBoard
+from job_hunter.boards.jobicy import JobicyBoard
 from job_hunter.config import Config
 from job_hunter.models import Job, Store
 
@@ -22,6 +25,9 @@ BOARDS: dict[str, type[Board]] = {
     "weworkremotely": WeWorkRemotelyBoard,
     "himalayas": HimalayasBoard,
     "remotive": RemotiveBoard,
+    "persona": PersonaBoard,
+    "workingnomads": WorkingNomadsBoard,
+    "jobicy": JobicyBoard,
 }
 
 

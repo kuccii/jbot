@@ -20,6 +20,9 @@ class Config(BaseModel):
         "remote4africa": True,
         "himalayas": True,
         "remotive": True,
+        "persona": True,
+        "workingnomads": True,
+        "jobicy": True,
         "weworkremotely": False,  # unreliable (403s from datacenter IPs)
     })
     keywords: list[str] = Field(default_factory=list)

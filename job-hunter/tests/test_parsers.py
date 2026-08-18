@@ -10,6 +10,9 @@ from job_hunter.boards.remoteok import RemoteOKBoard
 from job_hunter.boards.weworkremotely import WeWorkRemotelyBoard
 from job_hunter.boards.himalayas import HimalayasBoard
 from job_hunter.boards.remotive import RemotiveBoard
+from job_hunter.boards.persona import PersonaBoard
+from job_hunter.boards.workingnomads import WorkingNomadsBoard
+from job_hunter.boards.jobicy import JobicyBoard
 
 REMOTE_OK_PAYLOAD = [
     {"_metadata": "ignore me"},
@@ -253,3 +256,145 @@ async def test_remotive_parses_worldwide_and_country_restricted():
     assert jobs[1].location == "United States"
     assert jobs[1].remote == ""  # country-restricted
     assert jobs[2].location == ""  # empty = worldwide
+
+
+# ── Persona Talent ─────────────────────────────────────────────────────
+
+PERSONA_HTML = """
+<ul class="jobs-directory_list__UKvdC">
+  <li class="jobs-directory_card__48dEP">
+    <a class="jobs-directory_cardLink__07w0Y" href="/j/sales-development-representative-jtJw0YY-vG">
+      <div class="jobs-directory_cardMain__WJqEp">
+        <div class="jobs-directory_cardMeta__3WsUb">
+          <span class="jobs-directory_locationBadge__Sp3eT">Remote (Worldwide)</span>
+        </div>
+        <h3 class="jobs-directory_cardTitle__yAkPf">Sales Development Representative</h3>
+        <p class="jobs-directory_cardSummary__xSVOp">We are looking for SDRs to help our clients build pipeline.</p>
+      </div>
+    </a>
+  </li>
+  <li class="jobs-directory_card__48dEP">
+    <a class="jobs-directory_cardLink__07w0Y" href="/j/senior-software-engineer-aBc123">
+      <div class="jobs-directory_cardMain__WJqEp">
+        <div class="jobs-directory_cardMeta__3WsUb">
+          <span class="jobs-directory_locationBadge__Sp3eT">Remote (Worldwide)</span>
+        </div>
+        <h3 class="jobs-directory_cardTitle__yAkPf">Senior Software Engineer</h3>
+        <p class="jobs-directory_cardSummary__xSVOp">Build reliable systems for a client company.</p>
+      </div>
+    </a>
+  </li>
+</ul>
+"""
+
+
+@pytest.mark.asyncio
+async def test_persona_parses_remote_worldwide_cards():
+    def handler(request):
+        return httpx.Response(200, text=PERSONA_HTML, headers={"content-type": "text/html"})
+
+    board = PersonaBoard(transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 2
+    assert jobs[0].title == "Sales Development Representative"
+    assert jobs[0].company == "Persona Talent"
+    assert jobs[0].location == "Worldwide"
+    assert jobs[0].remote == "Remote"
+    assert jobs[0].url == "https://apply.personatalent.com/j/sales-development-representative-jtJw0YY-vG"
+    assert "SDRs" in jobs[0].description
+    assert jobs[1].title == "Senior Software Engineer"
+
+
+# ── Working Nomads ─────────────────────────────────────────────────────
+
+WORKING_NOMADS_PAYLOAD = [
+    {
+        "url": "https://www.workingnomads.com/job/go/1797731/",
+        "title": "Senior AI Engineer",
+        "description": "<p>Are you a talented Senior AI Engineer?</p>",
+        "company_name": "Lemon.io",
+        "category_name": "Development",
+        "tags": "python,machine learning",
+        "location": "Worldwide",
+        "pub_date": "2026-08-17T07:17:21-04:00",
+    },
+    {
+        "url": "https://www.workingnomads.com/job/go/1234/",
+        "title": "EU Sales Rep",
+        "description": "<p>Sales role for the European market.</p>",
+        "company_name": "EU Co",
+        "category_name": "Sales",
+        "tags": "sales",
+        "location": "Europe",
+        "pub_date": "2026-08-16T07:17:21-04:00",
+    },
+]
+
+
+@pytest.mark.asyncio
+async def test_workingnomads_parses_location_field():
+    def handler(request):
+        return httpx.Response(200, json=WORKING_NOMADS_PAYLOAD)
+
+    board = WorkingNomadsBoard(transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 2
+    assert jobs[0].title == "Senior AI Engineer"
+    assert jobs[0].company == "Lemon.io"
+    assert jobs[0].location == "Worldwide"
+    assert jobs[0].remote == "Remote"
+    assert jobs[0].board == "workingnomads"
+    assert jobs[1].location == "Europe"
+    assert jobs[1].remote == ""
+
+
+# ── Jobicy ─────────────────────────────────────────────────────────────
+
+JOBI_CY_PAYLOAD = {
+    "apiVersion": "2.2.15",
+    "jobCount": 2,
+    "jobs": [
+        {
+            "id": "1",
+            "url": "https://jobicy.com/jobs/rust-developer-1password",
+            "jobTitle": "Developer, Rust",
+            "companyName": "1Password",
+            "jobGeo": "Anywhere",
+            "jobLevel": "Junior",
+            "jobType": ["Full-Time"],
+            "jobIndustry": ["Software Engineering"],
+            "jobDescription": "<p>Build with Rust.</p>",
+            "pubDate": "2026-08-17T00:00:00Z",
+        },
+        {
+            "id": "2",
+            "url": "https://jobicy.com/jobs/us-designer",
+            "jobTitle": "Product Designer",
+            "companyName": "US Co",
+            "jobGeo": "USA",
+            "jobLevel": "Senior",
+            "jobType": ["Full-Time"],
+            "jobIndustry": ["Design"],
+            "jobDescription": "<p>Design role.</p>",
+            "pubDate": "2026-08-16T00:00:00Z",
+        },
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_jobicy_parses_anywhere_as_worldwide():
+    def handler(request):
+        return httpx.Response(200, json=JOBI_CY_PAYLOAD)
+
+    board = JobicyBoard(transport=transport_for(handler))
+    jobs = await board.fetch(limit=10)
+    assert len(jobs) == 2
+    assert jobs[0].title == "Developer, Rust"
+    assert jobs[0].company == "1Password"
+    assert jobs[0].location == "Anywhere"
+    assert jobs[0].remote == "Remote"
+    assert jobs[0].board == "jobicy"
+    assert "Software Engineering" in jobs[0].tags
+    assert jobs[1].location == "USA"
+    assert jobs[1].remote == ""  # country-restricted
