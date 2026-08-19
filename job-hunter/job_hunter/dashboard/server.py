@@ -122,10 +122,14 @@ async def platforms_page(request: Request):
         ai_gigs = conn.execute(
             "SELECT * FROM jobs WHERE board='opentrain' AND eligible=1 ORDER BY found_at DESC LIMIT 20"
         ).fetchall()
+        indeed_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE board='indeed' AND eligible=1 ORDER BY title"
+        ).fetchall()
         return templates.TemplateResponse("platforms.html", {
             "request": request,
             "platforms": platforms,
             "ai_gigs": ai_gigs,
+            "indeed_jobs": indeed_jobs,
         })
     finally:
         conn.close()

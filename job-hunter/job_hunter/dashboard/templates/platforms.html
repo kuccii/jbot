@@ -3,15 +3,25 @@
 {% block title %}Platforms — Job Hunter{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 1rem;">AI Training & Gig Platforms</h1>
+<h1 style="margin-bottom: 1rem;">Job Platforms & Sources</h1>
 <p style="color: var(--text-muted); margin-bottom: 2rem;">
-    Sign up, pass the qualification test, and start earning. These platforms pay for RLHF, data labeling, and AI training tasks.
+    Browse job platforms, sign up for gig work, or search Indeed directly.
 </p>
 
-<!-- Sign-Up Platforms Grid -->
-<div class="card">
-    <h2>💰 Sign-Up Platforms</h2>
-    <div class="grid" style="margin-top: 1rem;">
+<!-- Tabs -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+    <button class="btn tab-btn active" onclick="showTab('gigs')" id="tab-gigs">💰 Gig Platforms</button>
+    <button class="btn tab-btn" onclick="showTab('indeed')" id="tab-indeed">🔍 Indeed Search</button>
+    <button class="btn tab-btn" onclick="showTab('ai')" id="tab-ai">🤖 AI Training</button>
+</div>
+
+<!-- Gig Platforms Tab -->
+<div id="tab-content-gigs" class="tab-content">
+    <h2 style="margin-bottom: 1rem;">Sign-Up Platforms</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        Sign up, pass the qualification test, and start earning. These platforms pay for RLHF, data labeling, and AI training tasks.
+    </p>
+    <div class="grid">
         {% for p in platforms %}
         <div class="platform-card">
             <h3>{{ p.title[:45] }}</h3>
@@ -29,10 +39,32 @@
     </div>
 </div>
 
-<!-- Recent AI Gigs Grid -->
-<div class="card">
-    <h2>🎯 Recent AI Training Gigs</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
+<!-- Indeed Tab -->
+<div id="tab-content-indeed" class="tab-content" style="display: none;">
+    <h2 style="margin-bottom: 1rem;">🔍 Indeed Search Links</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        Indeed blocks automated scraping. Click these pre-built search links to browse live jobs directly on Indeed.
+    </p>
+    <div class="grid">
+        {% for job in indeed_jobs %}
+        <div class="grid-item">
+            <div class="tags">
+                <span class="badge badge-board">indeed</span>
+            </div>
+            <h3 style="margin-top: 0.5rem;"><a href="{{ job.url }}" target="_blank">{{ job.title[:55] }}</a></h3>
+            <div class="meta">🌍 Worldwide · Remote</div>
+            <div class="actions" style="margin-top: 0.75rem;">
+                <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">Search Indeed →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- AI Training Tab -->
+<div id="tab-content-ai" class="tab-content" style="display: none;">
+    <h2 style="margin-bottom: 1rem;">🎯 Recent AI Training Gigs</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
         Live gigs from OpenTrain.ai — apply directly.
     </p>
     <div class="grid">
@@ -55,4 +87,42 @@
         {% endfor %}
     </div>
 </div>
+
+<style>
+    .tab-btn {
+        min-width: auto;
+        padding: 0.6rem 1.2rem;
+    }
+    .tab-btn.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+    .tab-content {
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script>
+function showTab(tab) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+    // Show selected tab
+    document.getElementById(`tab-content-${tab}`).style.display = 'block';
+    document.getElementById(`tab-${tab}`).classList.add('active');
+
+    // Save preference
+    localStorage.setItem('platformTab', tab);
+}
+
+// Restore preference
+const savedTab = localStorage.getItem('platformTab') || 'gigs';
+showTab(savedTab);
+</script>
 {% endblock %}
