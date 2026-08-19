@@ -143,6 +143,79 @@ class TestRemoteOKBoard:
         assert not ok
 
 
+class TestGenericTitleRejection:
+    """Generic postings (not real jobs) should be rejected."""
+
+    @pytest.mark.parametrize("title", [
+        "General Application",
+        "General Upwork Application",
+        "Join Our Talent Community",
+        "Campus Crew Ambassador (Student Program)",
+        "Diversity Internship Program",
+        "Early Career - Software Engineer",
+    ])
+    def test_generic_titles_rejected(self, title):
+        ok, note = check_eligibility(job(title=title, location="Remote"))
+        assert not ok, (title, note)
+        assert "generic" in note.lower()
+
+
+class TestTitleRegionRestriction:
+    """Title with region codes should be rejected."""
+
+    @pytest.mark.parametrize("title", [
+        "Customer Solution Architect (AMER)",
+        "Director of Product Marketing - USA",
+        "Account Executive - EMEA",
+        "Backend Engineer (APAC)",
+        "Sales Manager - UK Only",
+        "Product Manager (EU Only)",
+    ])
+    def test_region_in_title_rejected(self, title):
+        ok, note = check_eligibility(job(title=title, location="Remote"))
+        assert not ok, (title, note)
+        assert "region restriction" in note.lower()
+
+
+class TestDescriptionRestrictions:
+    """Hidden timezone/region restrictions in descriptions should be caught."""
+
+    @pytest.mark.parametrize("desc", [
+        "Must work US hours and overlap with Eastern Time zone.",
+        "Available during US business hours (9am-5pm Pacific Time).",
+        "We need overlap with North American business hours.",
+        "This role requires working US timezone hours.",
+        "Must be available during Eastern Standard Time.",
+    ])
+    def test_timezone_restrictions_rejected(self, desc):
+        ok, note = check_eligibility(
+            job(title="Software Engineer", location="Remote", description=desc)
+        )
+        assert not ok, (desc[:50], note)
+        assert "timezone" in note.lower()
+
+    @pytest.mark.parametrize("desc", [
+        "Preference towards candidates based in San Francisco.",
+        "We prefer candidates located in London.",
+        "Strong preference for candidates in the United States.",
+        "We are only hiring in the US.",
+        "Ideally based in Berlin.",
+    ])
+    def test_preference_phrases_rejected(self, desc):
+        ok, note = check_eligibility(
+            job(title="Software Engineer", location="Remote", description=desc)
+        )
+        assert not ok, (desc[:50], note)
+        assert "preference" in note.lower() or "region" in note.lower()
+
+    def test_clean_description_passes(self):
+        ok, _ = check_eligibility(
+            job(title="Software Engineer", location="Remote",
+                description="We are a remote-first company. Build great products.")
+        )
+        assert ok
+
+
 class TestKeywords:
     def test_match(self):
         assert matches_keywords(job(tags="python, ai"), ["python"])

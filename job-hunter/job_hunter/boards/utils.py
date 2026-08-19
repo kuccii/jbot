@@ -27,7 +27,7 @@ def strip_html(text: str | None, max_len: int = 2000) -> str:
 # Location values (lowercased) that mean "open to anyone, anywhere".
 WORLDWIDE: set[str] = {
     "anywhere", "worldwide", "global", "any country", "all countries",
-    "🌏", "international", "emea", "middle east and africa",
+    "🌏", "international", "middle east and africa",
     "remote", "remoto",
 }
 

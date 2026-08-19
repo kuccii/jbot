@@ -16,6 +16,14 @@ A job is eligible if it can realistically be done from Rwanda or Kenya:
   3. RemoteOK's feed mixes in physical/onsite roles, so a bare city location
      is NOT treated as eligible — only remote/worldwide/Africa signals (or an
      empty location) pass.
+  4. Title and description are scanned for hidden restrictions:
+     -> NOT eligible if title contains region codes (USA, AMER, APAC, etc.)
+     -> NOT eligible if description mentions timezone requirements (US hours,
+        Eastern Time, must overlap with US business hours, etc.)
+     -> NOT eligible for generic postings (General Application, Talent
+        Community, Campus programs, Student roles).
+     -> NOT eligible if description states "preference towards candidates
+        based in [specific region]".
 """
 
 from __future__ import annotations
@@ -31,10 +39,41 @@ REMOTE_WORDS = [
 ]
 
 # Words that mean "open to anyone, anywhere".
+# Note: "emea" is handled specially — standalone "EMEA" means the job is
+# open to EMEA candidates (eligible), but "Dublin, Ireland, EMEA" means
+# the job is in Dublin (not eligible). See _is_emea_only_location().
 GLOBAL = [
     "anywhere", "worldwide", "global", "any country", "all countries",
-    "🌏", "international", "emea", "middle east and africa",
+    "🌏", "international", "middle east and africa",
 ]
+
+# EMEA as a standalone location signal (not attached to a specific city).
+EMEA_STANDALONE_RE = re.compile(
+    r"^\s*emea\s*$"  # just "EMEA"
+    r"|^\s*remote\s*,?\s*emea\s*$"  # "Remote, EMEA"
+    r"|^\s*remote\s*-\s*emea\s*$"  # "Remote - EMEA"
+    r"|,\s*emea\s*$",  # trailing ", EMEA" but only if no city before it
+    re.IGNORECASE,
+)
+
+
+def _is_emea_only_location(loc: str) -> bool:
+    """Return True if location is just "EMEA" with no specific city/country.
+
+    "EMEA" alone or "Remote, EMEA" -> True (eligible)
+    "Dublin, Ireland, EMEA" -> False (job is in Dublin)
+    "Remote - NA, APAC, EMEA" -> False (job lists specific regions)
+    """
+    stripped = loc.strip()
+    low = stripped.lower()
+    # Simple cases
+    if low in ("emea", "remote emea", "remote, emea", "remote - emea"):
+        return True
+    # Check if EMEA is the only region-like token (no city/country before it)
+    # Remove "remote" variants, then check if only "emea" remains
+    cleaned = re.sub(r"\b(remote|remoto)\b", "", low, flags=re.IGNORECASE)
+    cleaned = cleaned.strip(" ,-. ")
+    return cleaned == "emea"
 
 # Physical-role / country-restriction signals in the remaining text.
 RESTRICTED = [
@@ -61,6 +100,45 @@ RESTRICTED = [
     "cape town", "dubai", "riyadh", "kigali",
 ]
 
+# Region codes that appear in job titles to indicate geographic restrictions.
+# E.g. "Customer Solution Architect (AMER)", "Director of Product Marketing - USA"
+TITLE_REGION_CODES = [
+    "amer", "americas", "north america", "south america", "latam",
+    "apac", "emea", "europe", "uk only", "eu only",
+    "usa", "us only", "united states", "canada",
+]
+
+# Generic / non-real-job title patterns.
+GENERIC_TITLES = [
+    "general application", "general upwork application",
+    "talent community", "join our talent",
+    "campus", "student program", "student intern",
+    "diversity internship", "early career",
+]
+
+# Timezone / business-hours restrictions buried in descriptions.
+TIMEZONE_RESTRICTIONS = [
+    "us hours", "us timezone", "eastern time", "pacific time",
+    "central time", "mountain time", "eastern standard", "pacific standard",
+    "north american hours", "us business hours",
+    "must overlap", "overlap with us", "overlap with north american",
+    "available during us", "available during north american",
+    "working hours in the", "business hours in the us",
+]
+
+# "Preference" phrases that actually mean requirement.
+PREFERENCE_PHRASES = [
+    "preference towards candidates based in",
+    "preference for candidates based in",
+    "strong preference for candidates in",
+    "prefer candidates located in",
+    "preferably based in",
+    "ideally based in",
+    "we are hiring in",
+    "we are only hiring in",
+    "only hiring in",
+]
+
 # Words that mean "open to anyone, anywhere" -> eligible.
 WORLDWIDE = [
     "anywhere", "worldwide", "global", "🌏", "remote", "remoto",
@@ -68,14 +146,18 @@ WORLDWIDE = [
 ]
 
 # Africa-related location signals -> eligible.
+# Note: "emea" is NOT included here because EMEA = Europe, Middle East,
+# Africa — most EMEA jobs are actually in Europe, not Africa. Only
+# explicit Africa/East Africa/Rwanda/Kenya signals are trusted.
 AFRICA = [
     "rwanda", "kigali", "kenya", "nairobi", "east africa", "africa",
-    "emea", "middle east and africa",
+    "middle east and africa",
 ]
 
 # Regions in an eligible-country list that include Rwanda.
+# Note: "emea" is excluded — most EMEA-listed jobs are in Europe.
 RWANDA_OR_BROADER = [
-    "rwanda", "kenya", "africa", "east africa", "emea", "middle east and africa",
+    "rwanda", "kenya", "africa", "east africa", "middle east and africa",
     "sub-saharan africa", "worldwide", "global", "anywhere", "all countries",
     "remote",
 ]
@@ -92,10 +174,61 @@ _AFRICA_RE = re.compile(
 _RESTRICTED_RE = re.compile(
     r"\b(?:" + "|".join(re.escape(w) for w in RESTRICTED) + r")\b", re.IGNORECASE
 )
+_TITLE_REGION_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(w) for w in TITLE_REGION_CODES) + r")\b",
+    re.IGNORECASE,
+)
+_GENERIC_TITLE_RE = re.compile(
+    r"|".join(re.escape(w) for w in GENERIC_TITLES), re.IGNORECASE
+)
+_TIMEZONE_RE = re.compile(
+    r"|".join(re.escape(w) for w in TIMEZONE_RESTRICTIONS), re.IGNORECASE
+)
+PREFERENCE_RE = re.compile(
+    r"|".join(re.escape(w) for w in PREFERENCE_PHRASES), re.IGNORECASE
+)
+
+
+def _is_generic_title(title: str) -> bool:
+    """Return True if the title is a generic posting, not a real job."""
+    return bool(_GENERIC_TITLE_RE.search(title))
+
+
+def _has_title_region_restriction(title: str) -> bool:
+    """Return True if the title contains a region/country code."""
+    return bool(_TITLE_REGION_RE.search(title))
+
+
+def _has_description_restrictions(description: str) -> str | None:
+    """Scan description for hidden timezone/region restrictions.
+
+    Returns the first restriction found, or None if clean.
+    """
+    if not description:
+        return None
+    desc = description.lower()
+    m = _TIMEZONE_RE.search(desc)
+    if m:
+        return f"timezone restriction: {m.group()}"
+    m = PREFERENCE_RE.search(desc)
+    if m:
+        return f"region preference: {m.group()}"
+    return None
 
 
 def check_eligibility(job: Job) -> tuple[bool, str]:
     """Return (eligible, reason)."""
+
+    # 0. Fast-reject: generic postings and title-based region restrictions.
+    if _is_generic_title(job.title):
+        return False, f"generic posting: {job.title[:50]}"
+    if _has_title_region_restriction(job.title):
+        return False, f"title has region restriction: {job.title[:50]}"
+
+    # 0b. Fast-reject: description-based timezone/region restrictions.
+    desc_reject = _has_description_restrictions(job.description)
+    if desc_reject:
+        return False, desc_reject
 
     # 1. Explicit country/region list from the board (most reliable signal).
     countries = [c.strip() for c in job.eligible_countries if c and c.strip()]
@@ -137,6 +270,11 @@ def check_eligibility(job: Job) -> tuple[bool, str]:
 
     if _GLOBAL_RE.search(remainder):
         return True, f"worldwide: {loc[:60]}"
+
+    # Special case: standalone "EMEA" means open to EMEA (includes Africa),
+    # but "Dublin, Ireland, EMEA" means the job is in Dublin.
+    if _is_emea_only_location(loc):
+        return True, f"EMEA (open to Africa): {loc[:60]}"
 
     if _RESTRICTED_RE.search(remainder):
         return False, f"restricted location: {loc[:60]}"
