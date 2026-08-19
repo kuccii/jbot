@@ -65,12 +65,64 @@ def list(
         print("No jobs found. Run `python -m job_hunter discover` first.")
         return
     for r in rows:
-        print(f"[{r['id']:>4}] {r['title'][:60]} @ {r['company'][:28]:<28} "
-              f"| {r['board']:<14} | {r['status']}")
-        if r["eligibility_note"]:
-            print(f"       → {r['eligibility_note']}")
+        loc = f" | {r['location'][:25]}" if r["location"] else ""
+        print(f"[{r['id']:>4}] {r['title'][:55]} @ {r['company'][:22]:<22} "
+              f"| {r['board']:<14}{loc}")
         if r["url"]:
             print(f"       {r['url']}")
+
+
+@app.command()
+def search(
+    query: str = typer.Argument(..., help="Search keyword (title/company/description)"),
+    board: str | None = typer.Option(None, "--board", help="Only this board"),
+    limit: int = typer.Option(30, "--limit"),
+):
+    """Search jobs by keyword."""
+    _fix_console_encoding()
+    rows = _store().search(query=query, board=board, limit=limit)
+    if not rows:
+        print(f"No jobs match '{query}'.")
+        return
+    print(f"Found {len(rows)} job(s) matching '{query}':")
+    for r in rows:
+        loc = f" | {r['location'][:25]}" if r["location"] else ""
+        print(f"  [{r['id']:>4}] {r['title'][:50]:50s} @ {r['company'][:20]:20s} | {r['board']}{loc}")
+    print(f"\nUse `job-hunter details <id>` for full info.")
+
+
+@app.command()
+def details(job_id: int = typer.Argument(..., help="Job ID")):
+    """Show full details of a job."""
+    _fix_console_encoding()
+    r = _store().get_job(job_id)
+    if not r:
+        print(f"Job #{job_id} not found.")
+        return
+    print(f"{'='*70}")
+    print(f"  #{r['id']}  {r['title']}")
+    print(f"{'='*70}")
+    print(f"  Company:    {r['company']}")
+    print(f"  Board:      {r['board']}")
+    print(f"  Status:     {r['status']}")
+    print(f"  Location:   {r['location'] or '(not listed)'}")
+    if r['remote']:
+        print(f"  Remote:     {r['remote']}")
+    print(f"  URL:        {r['url']}")
+    if r['eligibility_note']:
+        print(f"  Eligible:   {r['eligibility_note']}")
+    if r['posted_at']:
+        print(f"  Posted:     {r['posted_at']}")
+    print(f"  Found:      {r['found_at']}")
+    desc = (r['description'] or '').strip()
+    if desc:
+        print(f"\n{'-'*70}")
+        print(f"  Description (first 500 chars):")
+        print(f"{'-'*70}")
+        print(f"  {desc[:500]}")
+        if len(desc) > 500:
+            print(f"  ... ({len(desc) - 500} more chars)")
+    print(f"\nActions: `job-hunter mark {job_id} saved` or `job-hunter mark {job_id} applied`")
 
 
 @app.command()
@@ -101,6 +153,22 @@ def purge(status: str = typer.Argument("hidden", help="Status to delete (default
     """Delete jobs with the given status."""
     n = _store().purge(status)
     print(f"Deleted {n} {status} job(s)")
+
+
+@app.command()
+def dashboard(
+    host: str = typer.Option("127.0.0.1", help="Host to bind"),
+    port: int = typer.Option(8000, help="Port to bind"),
+):
+    """Launch the web dashboard."""
+    import uvicorn
+    print(f"Starting dashboard at http://{host}:{port}")
+    uvicorn.run(
+        "job_hunter.dashboard.server:app",
+        host=host,
+        port=port,
+        reload=False,
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% set active = "home" %}
+{% block title %}Dashboard — Job Hunter{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">Dashboard</h1>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="number">{{ stats.total }}</div>
+        <div class="label">Total Jobs</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ stats.eligible }}</div>
+        <div class="label">Rwanda Eligible</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ stats.by_board|length }}</div>
+        <div class="label">Active Boards</div>
+    </div>
+    <div class="stat-card">
+        <div class="number">{{ stats.by_status.get('new', 0) }}</div>
+        <div class="label">New (Unread)</div>
+    </div>
+</div>
+
+<!-- Boards -->
+<div class="card">
+    <h2>Jobs by Board</h2>
+    <div class="board-list">
+        {% for board, count in stats.by_board.items() %}
+        <a href="/jobs?board={{ board }}" class="board-item">
+            <span>{{ board }}</span>
+            <span class="count">{{ count }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Status breakdown -->
+<div class="card">
+    <h2>Status Breakdown</h2>
+    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        {% for status, count in stats.by_status.items() %}
+        <div style="text-align: center;">
+            <div style="font-size: 1.8rem; font-weight: 700;">
+                {% if status == 'new' %}🟢
+                {% elif status == 'saved' %}⭐
+                {% elif status == 'applied' %}📤
+                {% else %}👁️
+                {% endif %}
+                {{ count }}
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.85rem;">{{ status }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Recent jobs -->
+<div class="card">
+    <h2>Recent Jobs</h2>
+    {% for job in recent %}
+    <div class="job-card">
+        <h3><a href="/jobs/{{ job.id }}">{{ job.title[:70] }}</a></h3>
+        <div class="meta">
+            {% if job.company %}{{ job.company }} · {% endif %}
+            <span class="badge badge-board">{{ job.board }}</span>
+            {% if job.location %} · {{ job.location[:30] }}{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    <div style="text-align: center; margin-top: 1rem;">
+        <a href="/jobs" style="color: var(--accent);">View all jobs →</a>
+    </div>
+</div>
+{% endblock %}

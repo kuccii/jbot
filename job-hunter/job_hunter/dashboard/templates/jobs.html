@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% set active = "jobs" %}
+{% block title %}Jobs — Job Hunter{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 1.5rem;">Jobs <span style="color: var(--text-muted); font-size: 1rem;">({{ total }} total)</span></h1>
+
+<!-- Filters -->
+<form class="filters" method="get" action="/jobs">
+    <input type="text" name="search" placeholder="Search jobs..." value="{{ filters.search }}">
+    <select name="board">
+        <option value="">All boards</option>
+        {% for b in boards %}
+        <option value="{{ b }}" {% if filters.board == b %}selected{% endif %}>{{ b }}</option>
+        {% endfor %}
+    </select>
+    <select name="status">
+        <option value="">All statuses</option>
+        <option value="new" {% if filters.status == 'new' %}selected{% endif %}>New</option>
+        <option value="saved" {% if filters.status == 'saved' %}selected{% endif %}>Saved</option>
+        <option value="applied" {% if filters.status == 'applied' %}selected{% endif %}>Applied</option>
+        <option value="hidden" {% if filters.status == 'hidden' %}selected{% endif %}>Hidden</option>
+    </select>
+    <button type="submit">Filter</button>
+</form>
+
+<!-- Job list -->
+{% for job in jobs %}
+<div class="job-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <h3><a href="/jobs/{{ job.id }}">{{ job.title[:80] }}</a></h3>
+            <div class="meta">
+                {% if job.company %}{{ job.company }} · {% endif %}
+                <span class="badge badge-board">{{ job.board }}</span>
+                <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+                {% if job.location %} · 📍 {{ job.location[:30] }}{% endif %}
+                {% if job.remote %} · 🌍 {{ job.remote }}{% endif %}
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn" onclick="setStatus({{ job.id }}, 'saved')">⭐ Save</button>
+            <button class="btn" onclick="setStatus({{ job.id }}, 'applied')">📤 Apply</button>
+        </div>
+    </div>
+    {% if job.eligibility_note %}
+    <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--green);">
+        ✓ {{ job.eligibility_note[:80] }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if not jobs %}
+<div class="card" style="text-align: center; padding: 3rem;">
+    <p style="color: var(--text-muted);">No jobs found matching your filters.</p>
+</div>
+{% endif %}
+
+<!-- Pagination -->
+{% if pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page-1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">← Prev</a>
+    {% endif %}
+
+    {% for p in range(1, pages + 1) %}
+        {% if p == page %}
+        <span class="active">{{ p }}</span>
+        {% elif p <= 3 or p > pages - 3 or (p >= page - 2 and p <= page + 2) %}
+        <a href="?page={{ p }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">{{ p }}</a>
+        {% elif p == 4 or p == pages - 3 %}
+        <span>...</span>
+        {% endif %}
+    {% endfor %}
+
+    {% if page < pages %}
+    <a href="?page={{ page+1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">Next →</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+async function setStatus(jobId, status) {
+    await fetch(`/jobs/${jobId}/status?status=${status}`, { method: 'POST' });
+    location.reload();
+}
+</script>
+{% endblock %}

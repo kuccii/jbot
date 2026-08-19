@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set active = "platforms" %}
+{% block title %}Platforms — Job Hunter{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">AI Training & Gig Platforms</h1>
+
+<!-- Platform cards -->
+<div class="card">
+    <h2>Sign-Up Platforms</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        These platforms pay for AI training tasks (RLHF, data labeling, annotation).
+        Sign up, pass the qualification test, and start earning.
+    </p>
+
+    {% for p in platforms %}
+    <div class="platform-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h3>{{ p.title[:60] }}</h3>
+                <div class="tasks">{{ p.description[:200] }}</div>
+            </div>
+            <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Recent AI gigs -->
+<div class="card">
+    <h2>Recent AI Training Gigs (OpenTrain)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Live gigs from OpenTrain.ai — apply directly.
+    </p>
+
+    {% for gig in ai_gigs %}
+    <div class="job-card">
+        <h3><a href="{{ gig.url }}" target="_blank">{{ gig.title[:70] }}</a></h3>
+        <div class="meta">
+            <span class="badge badge-board">opentrain</span>
+            {% if gig.tags %} · Tags: {{ gig.tags }}{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
