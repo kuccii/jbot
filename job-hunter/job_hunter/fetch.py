@@ -1,8 +1,21 @@
-"""Shared HTTP helpers."""
+"""Shared HTTP helpers.
+
+Provides two fetching strategies:
+  1. ``get()`` — async httpx with retries (default, fast)
+  2. ``get_cf()`` — sync curl_cffi with Chrome impersonation (bypasses Cloudflare)
+"""
 
 import asyncio
+from typing import Optional
 
 import httpx
+
+# Try to import curl_cffi for Cloudflare bypass
+try:
+    from curl_cffi import requests as _cf_requests
+    _HAS_CF = True
+except ImportError:
+    _HAS_CF = False
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -31,3 +44,27 @@ async def get(client: httpx.AsyncClient, url: str, timeout: float = 15.0,
             last_error = exc
             await asyncio.sleep(1.0 * (attempt + 1))
     raise last_error or httpx.TransportError(f"failed to fetch {url}")
+
+
+def get_cf(url: str, timeout: float = 15.0) -> Optional[str]:
+    """Fetch URL using curl_cffi with Chrome impersonation.
+
+    Bypasses Cloudflare challenges that block regular httpx/requests.
+    Returns the response text, or None on failure.
+
+    This is a *sync* function — use from async code via asyncio.to_thread().
+    """
+    if not _HAS_CF:
+        return None
+    try:
+        resp = _cf_requests.get(
+            url,
+            impersonate="chrome",
+            timeout=timeout,
+            headers={"Accept-Language": "en-US,en;q=0.9"},
+        )
+        if resp.status_code >= 400:
+            return None
+        return resp.text
+    except Exception:
+        return None

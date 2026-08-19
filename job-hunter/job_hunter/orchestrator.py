@@ -11,6 +11,7 @@ from job_hunter.boards import BOARDS
 from job_hunter.boards.base import Board
 from job_hunter.boards.remoteok import RemoteOKBoard
 from job_hunter.boards.ats import ATSBoard
+from job_hunter.boards.scam_filter import is_unreliable
 from job_hunter.config import Config
 from job_hunter.models import Job, Store
 
@@ -38,8 +39,16 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
     except Exception as exc:
         return {"board": name, "fetched": 0, "error": f"{type(exc).__name__}: {exc}"}
 
-    added = eligible = duplicates = 0
+    added = eligible = duplicates = unreliable = 0
     for job in jobs:
+        # Scam/unreliable filter
+        is_bad, bad_reason = is_unreliable(
+            title=job.title, company=job.company, description=job.description
+        )
+        if is_bad:
+            unreliable += 1
+            continue
+
         ok, note = eligibility.check_eligibility(job)
         if not ok:
             continue  # store only Rwanda-eligible roles
@@ -58,6 +67,7 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
         "eligible": eligible,
         "added": added,
         "duplicates": duplicates,
+        "unreliable": unreliable,
         "error": None,
     }
 
