@@ -147,7 +147,7 @@ class Config(BaseModel):
         default_factory=lambda: [ATSCompanyConfig(**c) for c in DEFAULT_ATS_COMPANIES]
     )
     database: str = "data/jobs.db"
-    max_jobs_per_board: int = 30
+    max_jobs_per_board: int = 200
 
 
 def load_config(config_path: str | None = None) -> Config:
