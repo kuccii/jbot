@@ -13,10 +13,10 @@ Note: API data is delayed by 24 hours. Rate limit: max 2x/min.
 
 from __future__ import annotations
 
-import re
 from html import unescape
 
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html, remote_status
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
@@ -69,9 +69,7 @@ class RemotiveBoard(Board):
         location = required_loc if required_loc else ""
 
         # Determine remote status
-        remote = ""
-        if required_loc.lower() == "worldwide":
-            remote = "Remote"
+        remote = remote_status(location)
 
         # Salary
         salary = str(item.get("salary", "")).strip()
@@ -79,10 +77,7 @@ class RemotiveBoard(Board):
         # Category
         category = str(item.get("category", "")).strip()
 
-        # Description (strip HTML)
-        desc_html = item.get("description", "") or ""
-        desc = re.sub(r"<[^>]+>", " ", desc_html)
-        desc = " ".join(desc.split())[:2000]
+        desc = strip_html(item.get("description", ""))
 
         return Job(
             title=title,

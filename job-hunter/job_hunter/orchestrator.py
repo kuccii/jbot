@@ -7,30 +7,12 @@ import asyncio
 import sys
 
 from job_hunter import eligibility
+from job_hunter.boards import BOARDS
 from job_hunter.boards.base import Board
 from job_hunter.boards.remoteok import RemoteOKBoard
-from job_hunter.boards.remote4africa import Remote4AfricaBoard
-from job_hunter.boards.weworkremotely import WeWorkRemotelyBoard
-from job_hunter.boards.himalayas import HimalayasBoard
-from job_hunter.boards.remotive import RemotiveBoard
-from job_hunter.boards.persona import PersonaBoard
-from job_hunter.boards.workingnomads import WorkingNomadsBoard
-from job_hunter.boards.jobicy import JobicyBoard
 from job_hunter.boards.ats import ATSBoard
 from job_hunter.config import Config
 from job_hunter.models import Job, Store
-
-BOARDS: dict[str, type[Board]] = {
-    "remoteok": RemoteOKBoard,
-    "remote4africa": Remote4AfricaBoard,
-    "weworkremotely": WeWorkRemotelyBoard,
-    "himalayas": HimalayasBoard,
-    "remotive": RemotiveBoard,
-    "persona": PersonaBoard,
-    "workingnomads": WorkingNomadsBoard,
-    "jobicy": JobicyBoard,
-    "ats": ATSBoard,
-}
 
 
 def _log(msg: str) -> None:
@@ -38,12 +20,14 @@ def _log(msg: str) -> None:
 
 
 def _make_board(name: str, cfg: Config) -> Board:
+    """Create a board instance with the right config for this run."""
     if name == "remoteok":
         return RemoteOKBoard(tags=cfg.keywords)
     if name == "ats":
         return ATSBoard(companies=[c.model_dump() for c in cfg.ats_companies])
-    if name in BOARDS:
-        return BOARDS[name]()
+    cls = BOARDS.get(name)
+    if cls:
+        return cls()
     raise ValueError(f"Unknown board: {name}")
 
 

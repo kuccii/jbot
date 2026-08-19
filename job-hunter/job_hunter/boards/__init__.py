@@ -15,14 +15,17 @@ from job_hunter.boards.workingnomads import WorkingNomadsBoard
 from job_hunter.boards.jobicy import JobicyBoard
 from job_hunter.boards.ats import ATSBoard
 
-BOARDS: dict[str, Board] = {
-    "remoteok": RemoteOKBoard(),
-    "remote4africa": Remote4AfricaBoard(),
-    "weworkremotely": WeWorkRemotelyBoard(),
-    "himalayas": HimalayasBoard(),
-    "remotive": RemotiveBoard(),
-    "persona": PersonaBoard(),
-    "workingnomads": WorkingNomadsBoard(),
-    "jobicy": JobicyBoard(),
-    "ats": ATSBoard(),
+# Board name -> class mapping. The orchestrator instantiates these with
+# per-run config (e.g. RemoteOKBoard needs keyword tags, ATSBoard needs
+# a company list).
+BOARDS: dict[str, type[Board]] = {
+    "remoteok": RemoteOKBoard,
+    "remote4africa": Remote4AfricaBoard,
+    "weworkremotely": WeWorkRemotelyBoard,
+    "himalayas": HimalayasBoard,
+    "remotive": RemotiveBoard,
+    "persona": PersonaBoard,
+    "workingnomads": WorkingNomadsBoard,
+    "jobicy": JobicyBoard,
+    "ats": ATSBoard,
 }

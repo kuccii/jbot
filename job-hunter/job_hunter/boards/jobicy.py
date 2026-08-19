@@ -14,17 +14,14 @@ listing is cleanly worldwide.
 
 from __future__ import annotations
 
-import re
 from html import unescape
 
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html, remote_status, is_worldwide
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
 API_URL = "https://jobicy.com/api/v2/remote-jobs?count=100"
-
-# geo values that mean "open to anyone, anywhere".
-WORLDWIDE_GEO = {"anywhere", "worldwide", "global"}
 
 
 class JobicyBoard(Board):
@@ -47,7 +44,7 @@ class JobicyBoard(Board):
 
         # Worldwide jobs first — the raw feed is dominated by US/Canada/EU
         # roles, so without reordering the eligible ones never surface.
-        jobs.sort(key=lambda j: j.location.lower() not in WORLDWIDE_GEO)
+        jobs.sort(key=lambda j: not is_worldwide(j.location))
         return jobs[:limit]
 
     def _parse_job(self, item: dict) -> Job | None:
@@ -60,12 +57,9 @@ class JobicyBoard(Board):
 
         geo = str(item.get("jobGeo", "")).strip()
         location = geo if geo else "Anywhere"
-        remote = "Remote" if location.lower() in ("anywhere", "worldwide", "global") else ""
+        remote = remote_status(location)
 
-        # Description is HTML
-        desc_html = item.get("jobDescription", "") or ""
-        desc = re.sub(r"<[^>]+>", " ", desc_html)
-        desc = " ".join(desc.split())[:2000]
+        desc = strip_html(item.get("jobDescription", ""))
 
         industries = item.get("jobIndustry") or []
         tags = ", ".join(industries[:5])

@@ -20,10 +20,10 @@ being {name, ats, slug}. Only ATS slugs that resolve live are seeded.
 from __future__ import annotations
 
 import asyncio
-import re
 from html import unescape
 
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
@@ -32,8 +32,7 @@ ASHBY_API = "https://api.ashbyhq.com/posting-api/job-board/{slug}"
 SMARTRECRUITERS_API = "https://api.smartrecruiters.com/v1/companies/{slug}/postings?limit=100"
 
 
-def _strip_html(text: str) -> str:
-    return " ".join(re.sub(r"<[^>]+>", " ", text or "").split())[:2000]
+
 
 
 class ATSBoard(Board):
@@ -108,7 +107,7 @@ class ATSBoard(Board):
             loc = (item.get("location") or {})
             location = str(loc.get("name", "")).strip() if isinstance(loc, dict) else str(loc)
             remote = "Remote" if "remote" in location.lower() else ""
-            desc = _strip_html(item.get("content", ""))
+            desc = strip_html(item.get("content", ""))
             out.append(Job(
                 title=title,
                 company=company.get("name", item.get("company_name", "")),
@@ -133,7 +132,7 @@ class ATSBoard(Board):
                 continue
             location = str(item.get("location", "")).strip()
             remote = "Remote" if item.get("isRemote") or "remote" in location.lower() else ""
-            desc = _strip_html(item.get("descriptionPlain", ""))
+            desc = strip_html(item.get("descriptionPlain", ""))
             out.append(Job(
                 title=title,
                 company=company.get("name", ""),

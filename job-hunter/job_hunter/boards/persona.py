@@ -18,9 +18,9 @@ Each listing is an <a href="/j/..."> card containing:
 from __future__ import annotations
 
 import re
-from html import unescape
 
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html, is_worldwide
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
@@ -35,8 +35,7 @@ _BADGE_RE = re.compile(r"Remote\s*\((.*?)\)", re.S)
 _SUMMARY_RE = re.compile(r"<p[^>]*>(.*?)</p>", re.S)
 
 
-def _strip_html(text: str) -> str:
-    return " ".join(re.sub(r"<[^>]+>", " ", text).split())
+
 
 
 class PersonaBoard(Board):
@@ -53,19 +52,19 @@ class PersonaBoard(Board):
                 return jobs
 
             for href, body in _CARD_RE.findall(html):
-                title = _strip_html(_TITLE_RE.search(body).group(1)) if _TITLE_RE.search(body) else ""
+                title = strip_html(_TITLE_RE.search(body).group(1)) if _TITLE_RE.search(body) else ""
                 if not title:
                     continue
 
                 badge = ""
                 m = _BADGE_RE.search(body)
                 if m:
-                    badge = _strip_html(m.group(1))
+                    badge = strip_html(m.group(1))
 
                 summary = ""
                 m = _SUMMARY_RE.search(body)
                 if m:
-                    summary = _strip_html(m.group(1))
+                    summary = strip_html(m.group(1))
 
                 location = badge if badge else "Worldwide"
                 jobs.append(Job(
@@ -74,7 +73,7 @@ class PersonaBoard(Board):
                     url=f"https://apply.personatalent.com{href}",
                     board=self.name,
                     location=location,
-                    remote="Remote" if "worldwide" in location.lower() else "",
+                    remote="Remote" if is_worldwide(location) else "",
                     tags="",
                     description=summary,
                     posted_at="",

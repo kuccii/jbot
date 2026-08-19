@@ -19,11 +19,11 @@ class ATSCompanyConfig(BaseModel):
     slug: str
 
 
-# Companies whose ATS boards were verified live (26/28 resolve to real
-# public APIs). The eligibility filter still applies per-posting, so
-# country-restricted roles are dropped automatically.
+# Companies whose ATS boards were verified live against public APIs.
+# The eligibility filter still applies per-posting, so country-restricted
+# roles are dropped automatically.
 DEFAULT_ATS_COMPANIES: list[dict] = [
-    # Greenhouse
+    # ── Greenhouse ─────────────────────────────────────────────────────────
     {"name": "GitLab", "ats": "greenhouse", "slug": "gitlab"},
     {"name": "Stripe", "ats": "greenhouse", "slug": "stripe"},
     {"name": "Remote.com", "ats": "greenhouse", "slug": "remote"},
@@ -34,7 +34,31 @@ DEFAULT_ATS_COMPANIES: list[dict] = [
     {"name": "Dropbox", "ats": "greenhouse", "slug": "dropbox"},
     {"name": "Airtable", "ats": "greenhouse", "slug": "airtable"},
     {"name": "Vercel", "ats": "greenhouse", "slug": "vercel"},
-    # Ashby
+    {"name": "Discord", "ats": "greenhouse", "slug": "discord"},
+    {"name": "DataDog", "ats": "greenhouse", "slug": "datadog"},
+    {"name": "Cloudflare", "ats": "greenhouse", "slug": "cloudflare"},
+    {"name": "Postman", "ats": "greenhouse", "slug": "postman"},
+    {"name": "Algolia", "ats": "greenhouse", "slug": "algolia"},
+    {"name": "Buildkite", "ats": "greenhouse", "slug": "buildkite"},
+    {"name": "Fivetran", "ats": "greenhouse", "slug": "fivetran"},
+    {"name": "Wise", "ats": "greenhouse", "slug": "wise"},
+    {"name": "HackerRank", "ats": "greenhouse", "slug": "hackerrank"},
+    {"name": "Brex", "ats": "greenhouse", "slug": "brex"},
+    {"name": "Coinbase", "ats": "greenhouse", "slug": "coinbase"},
+    {"name": "Mercury", "ats": "greenhouse", "slug": "mercury"},
+    {"name": "Duolingo", "ats": "greenhouse", "slug": "duolingo"},
+    {"name": "Prisma", "ats": "greenhouse", "slug": "prisma"},
+    {"name": "PlanetScale", "ats": "greenhouse", "slug": "planetscale"},
+    {"name": "Netlify", "ats": "greenhouse", "slug": "netlify"},
+    {"name": "Fastly", "ats": "greenhouse", "slug": "fastly"},
+    {"name": "Elastic", "ats": "greenhouse", "slug": "elastic"},
+    {"name": "Twitch", "ats": "greenhouse", "slug": "twitch"},
+    {"name": "Xometry", "ats": "greenhouse", "slug": "xometry"},
+    {"name": "Checkr", "ats": "greenhouse", "slug": "checkr"},
+    {"name": "N26", "ats": "greenhouse", "slug": "n26"},
+    {"name": "SumUp", "ats": "greenhouse", "slug": "sumup"},
+    {"name": "Storyblok", "ats": "greenhouse", "slug": "storyblok"},
+    # ── Ashby ──────────────────────────────────────────────────────────────
     {"name": "Deel", "ats": "ashby", "slug": "deel"},
     {"name": "OpenAI", "ats": "ashby", "slug": "openai"},
     {"name": "Zapier", "ats": "ashby", "slug": "zapier"},
@@ -48,8 +72,39 @@ DEFAULT_ATS_COMPANIES: list[dict] = [
     {"name": "1Password", "ats": "ashby", "slug": "1password"},
     {"name": "Sentry", "ats": "ashby", "slug": "sentry"},
     {"name": "PostHog", "ats": "ashby", "slug": "posthog"},
-    # SmartRecruiters
+    {"name": "Ramp", "ats": "ashby", "slug": "ramp"},
+    {"name": "Replit", "ats": "ashby", "slug": "replit"},
+    {"name": "Vercel (Ashby)", "ats": "ashby", "slug": "vercel"},
+    {"name": "Sanity", "ats": "ashby", "slug": "sanity"},
+    {"name": "Supabase", "ats": "ashby", "slug": "supabase"},
+    {"name": "Railway", "ats": "ashby", "slug": "railway"},
+    {"name": "Render", "ats": "ashby", "slug": "render"},
+    {"name": "Runway", "ats": "ashby", "slug": "runway"},
+    {"name": "Chromatic", "ats": "ashby", "slug": "chromatic"},
+    {"name": "GitBook", "ats": "ashby", "slug": "gitbook"},
+    {"name": "Prefect", "ats": "ashby", "slug": "prefect"},
+    {"name": "Airbyte", "ats": "ashby", "slug": "airbyte"},
+    {"name": "Help Scout", "ats": "ashby", "slug": "helpscout"},
+    {"name": "Plaid", "ats": "ashby", "slug": "plaid"},
+    {"name": "Snyk", "ats": "ashby", "slug": "snyk"},
+    {"name": "Windfall", "ats": "ashby", "slug": "windfall"},
+    # ── SmartRecruiters ────────────────────────────────────────────────────
     {"name": "Canva", "ats": "smartrecruiters", "slug": "canva"},
+    {"name": "Spotify", "ats": "smartrecruiters", "slug": "spotify"},
+    {"name": "Adobe", "ats": "smartrecruiters", "slug": "adobe"},
+    {"name": "Shopify", "ats": "smartrecruiters", "slug": "shopify"},
+    {"name": "SAP", "ats": "smartrecruiters", "slug": "sap"},
+    {"name": "Salesforce", "ats": "smartrecruiters", "slug": "salesforce"},
+    {"name": "Oracle", "ats": "smartrecruiters", "slug": "oracle"},
+    {"name": "IBM", "ats": "smartrecruiters", "slug": "ibm"},
+    {"name": "Cisco", "ats": "smartrecruiters", "slug": "cisco"},
+    {"name": "VMware", "ats": "smartrecruiters", "slug": "vmware"},
+    {"name": "ServiceNow", "ats": "smartrecruiters", "slug": "servicenow"},
+    {"name": "Workday", "ats": "smartrecruiters", "slug": "workday"},
+    {"name": "Atlassian", "ats": "smartrecruiters", "slug": "atlassian"},
+    {"name": "Splunk", "ats": "smartrecruiters", "slug": "splunk"},
+    {"name": "Palo Alto Networks", "ats": "smartrecruiters", "slug": "paloalto"},
+    {"name": "CrowdStrike", "ats": "smartrecruiters", "slug": "crowdstrike"},
 ]
 
 class Config(BaseModel):

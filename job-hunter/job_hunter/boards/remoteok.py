@@ -8,22 +8,14 @@ fill the remaining quota.
 
 from __future__ import annotations
 
-import re
 from html import unescape
 
-from bs4 import BeautifulSoup
-
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html, remote_status
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
 API_URL = "https://remoteok.com/api"
-
-
-def _strip_html(text: str) -> str:
-    if not text:
-        return ""
-    return BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
 
 
 class RemoteOKBoard(Board):
@@ -59,18 +51,16 @@ class RemoteOKBoard(Board):
                     if link in seen:
                         continue
                     seen.add(link)
+                    loc = unescape(str(item.get("location", "")))
                     jobs.append(Job(
                         title=title,
                         company=unescape(str(item.get("company", ""))),
                         url=link,
                         board=self.name,
-                        location=unescape(str(item.get("location", ""))),
-                        remote="Remote" if re.search(
-                            r"🌏|worldwide|anywhere|remote|remoto",
-                            str(item.get("location", "")),
-                        ) else "",
+                        location=loc,
+                        remote=remote_status(loc),
                         tags=", ".join(item.get("tags") or []),
-                        description=_strip_html(item.get("description", ""))[:2000],
+                        description=strip_html(item.get("description", "")),
                         posted_at=str(item.get("date", "")),
                     ))
                     if len(jobs) >= limit:

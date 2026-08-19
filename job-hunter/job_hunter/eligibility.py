@@ -1,14 +1,14 @@
-"""Rwanda eligibility rules.
+"""Rwanda + Kenya eligibility rules.
 
-A job is eligible if it can realistically be done from Rwanda:
+A job is eligible if it can realistically be done from Rwanda or Kenya:
   1. The board gave an explicit eligible-country/region list (e.g. Remote4Africa)
-     -> eligible iff "Rwanda" is listed, OR a broader region that includes
-        Rwanda is listed ("Africa", "East Africa", "EMEA", "Worldwide", ...).
+     -> eligible iff "Rwanda" or "Kenya" is listed, OR a broader region that
+        includes them is listed ("Africa", "East Africa", "EMEA", ...).
         NOT eligible if the list names only specific other countries.
   2. Otherwise we infer from the location/region text. The location is judged
      after stripping remote-flavored words ("remote", "fully remote", ...):
      -> eligible if what remains is empty (location was only "remote"), or
-        names Africa / East Africa / Rwanda / Kigali / EMEA, or a worldwide
+        names Africa / East Africa / Rwanda / Kenya / EMEA, or a worldwide
         region ("worldwide", "global", "anywhere", ...).
      -> NOT eligible if what remains names a specific place ("Remote, Italy",
         "New York", "APAC", "Remote (UK)", ...) or a physical-role signal
@@ -57,7 +57,7 @@ RESTRICTED = [
     "new york", "san francisco", "london", "berlin", "paris", "amsterdam",
     "cardiff", "sydney", "melbourne", "toronto", "austin", "seattle",
     "los angeles", "chicago", "boston", "singapore", "tokyo", "bengaluru",
-    "bangalore", "mumbai", "lagos", "nairobi", "accra", "cairo", "joburg",
+    "bangalore", "mumbai", "lagos", "accra", "cairo", "joburg",
     "cape town", "dubai", "riyadh", "kigali",
 ]
 
@@ -69,12 +69,13 @@ WORLDWIDE = [
 
 # Africa-related location signals -> eligible.
 AFRICA = [
-    "rwanda", "kigali", "east africa", "africa", "emea", "middle east and africa",
+    "rwanda", "kigali", "kenya", "nairobi", "east africa", "africa",
+    "emea", "middle east and africa",
 ]
 
 # Regions in an eligible-country list that include Rwanda.
 RWANDA_OR_BROADER = [
-    "rwanda", "africa", "east africa", "emea", "middle east and africa",
+    "rwanda", "kenya", "africa", "east africa", "emea", "middle east and africa",
     "sub-saharan africa", "worldwide", "global", "anywhere", "all countries",
     "remote",
 ]

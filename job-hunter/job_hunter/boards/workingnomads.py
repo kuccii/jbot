@@ -13,17 +13,14 @@ Note: volume is small (~50 jobs) and heavily dev-focused.
 
 from __future__ import annotations
 
-import re
 from html import unescape
 
 from job_hunter.boards.base import Board
+from job_hunter.boards.utils import strip_html, remote_status, is_worldwide
 from job_hunter.fetch import get
 from job_hunter.models import Job
 
 API_URL = "https://www.workingnomads.com/api/exposed_jobs/"
-
-# location values that mean "open to anyone, anywhere".
-WORLDWIDE_LOC = {"worldwide", "anywhere", "global", "remote", ""}
 
 
 class WorkingNomadsBoard(Board):
@@ -46,7 +43,7 @@ class WorkingNomadsBoard(Board):
 
         # Worldwide jobs first — the raw feed mixes restricted locations in
         # front, so reorder so the eligible ones surface within the limit.
-        jobs.sort(key=lambda j: j.location.strip().lower() not in WORLDWIDE_LOC)
+        jobs.sort(key=lambda j: not is_worldwide(j.location))
         return jobs[:limit]
 
     def _parse_job(self, item: dict) -> Job | None:
@@ -58,12 +55,9 @@ class WorkingNomadsBoard(Board):
         link = item.get("url", "")
 
         location = str(item.get("location", "")).strip()
-        remote = "Remote" if location.lower() in ("worldwide", "anywhere", "global") else ""
+        remote = remote_status(location)
 
-        # Description is HTML
-        desc_html = item.get("description", "") or ""
-        desc = re.sub(r"<[^>]+>", " ", desc_html)
-        desc = " ".join(desc.split())[:2000]
+        desc = strip_html(item.get("description", ""))
 
         return Job(
             title=title,

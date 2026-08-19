@@ -16,8 +16,12 @@ class TestCountryList:
         ok, note = check_eligibility(job(eligible_countries=["Kenya", "Rwanda", "Uganda"]))
         assert ok
 
-    def test_rwanda_missing_from_list(self):
-        ok, note = check_eligibility(job(eligible_countries=["Kenya", "Ghana"]))
+    def test_kenya_in_list(self):
+        ok, note = check_eligibility(job(eligible_countries=["Kenya"]))
+        assert ok
+
+    def test_neither_rwanda_nor_kenya_missing(self):
+        ok, note = check_eligibility(job(eligible_countries=["Ghana", "Nigeria"]))
         assert not ok
         assert "restricts" in note
 
@@ -43,7 +47,9 @@ class TestLocationHeuristics:
         ("Africa", "Remote"),
         ("East Africa", ""),
         ("Kigali, Rwanda", ""),
+        ("Nairobi, Kenya", ""),
         ("Nairobi, Kenya (East Africa)", "Remote"),
+        ("Kenya", "Remote"),
         ("", "100% Remote"),
     ])
     def test_eligible(self, loc, remote):
@@ -101,11 +107,15 @@ class TestATSPatterns:
         ok, note = check_eligibility(job(board="ats", location=loc, remote=remote))
         assert ok, (loc, remote, note)
 
-    def test_kenya_only_remote_not_eligible(self):
-        # A role restricted to Kenya does not hire from Rwanda — only the
-        # broader "Africa"/"East Africa"/"EMEA" regions qualify.
+    def test_kenya_location_is_eligible(self):
+        # A role mentioning Kenya is eligible (Kenya and Rwanda are both
+        # target markets for this tool).
         ok, note = check_eligibility(job(board="ats", location="Remote, Kenya", remote="Remote"))
-        assert not ok
+        assert ok
+
+    def test_kenya_only_country_in_list_eligible(self):
+        ok, note = check_eligibility(job(board="ats", eligible_countries=["Kenya"]))
+        assert ok
 
 
 class TestRemoteOKBoard:
