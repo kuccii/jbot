@@ -26,8 +26,9 @@ except ImportError:
 async def render_js(
     url: str,
     *,
-    wait_until: str = "networkidle",
-    timeout_ms: int = 30_000,
+    wait_until: str = "domcontentloaded",
+    timeout_ms: int = 45_000,
+    extra_wait_ms: int = 8000,
     user_agent: str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
 ) -> Optional[str]:
     """Render *url* in a headless Chromium browser and return the HTML.
@@ -39,10 +40,12 @@ async def render_js(
     url:
         The URL to render.
     wait_until:
-        Playwright navigation wait condition.  ``"networkidle"`` waits until
-        there are no network connections for at least 500 ms.
+        Playwright navigation wait condition.  ``"domcontentloaded"`` is
+        faster; we then wait ``extra_wait_ms`` for client-side JS to hydrate.
     timeout_ms:
         Maximum time to wait for the page to load.
+    extra_wait_ms:
+        Additional time to wait after page load for JS hydration.
     user_agent:
         User-Agent string to send.
     """
@@ -55,8 +58,8 @@ async def render_js(
             try:
                 page = await browser.new_page(user_agent=user_agent)
                 await page.goto(url, wait_until=wait_until, timeout=timeout_ms)
-                # Extra wait for JS hydration
-                await page.wait_for_timeout(2000)
+                # Wait for client-side JS to hydrate and render content
+                await page.wait_for_timeout(extra_wait_ms)
                 return await page.content()
             finally:
                 await browser.close()
