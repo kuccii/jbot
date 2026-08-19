@@ -68,6 +68,11 @@
             border-radius: var(--radius);
             padding: 1.5rem;
             text-align: center;
+            transition: all 0.2s;
+        }
+        .stat-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
         }
         .stat-card .number {
             font-size: 2.5rem;
@@ -95,7 +100,7 @@
             display: inline-block;
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
         }
         .badge-board { background: var(--accent); color: white; }
@@ -152,24 +157,59 @@
         .pagination a:hover { background: var(--bg-hover); }
         .pagination .active { background: var(--accent); color: white; }
 
-        /* Job card */
+        /* Generic grid layout */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .grid-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+        .grid-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.15);
+        }
+        .grid-item h3 {
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+        .grid-item h3 a { color: var(--text); }
+        .grid-item h3 a:hover { color: var(--accent); }
+        .grid-item .meta { color: var(--text-muted); font-size: 0.85rem; }
+        .grid-item .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+        .grid-item .eligible { font-size: 0.8rem; color: var(--green); margin-top: 0.5rem; }
+        .grid-item .actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Job card (list view fallback) */
         .job-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1.25rem;
             margin-bottom: 0.75rem;
-            transition: border-color 0.2s;
+            transition: all 0.2s;
         }
         .job-card:hover { border-color: var(--accent); }
         .job-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
         .job-card .meta { color: var(--text-muted); font-size: 0.85rem; }
-        .job-card .tags { margin-top: 0.5rem; }
 
         /* Detail page */
         .detail-header { margin-bottom: 2rem; }
         .detail-header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
-        .detail-meta { display: flex; gap: 2rem; color: var(--text-muted); margin-top: 1rem; }
+        .detail-meta { display: flex; gap: 2rem; color: var(--text-muted); margin-top: 1rem; flex-wrap: wrap; }
         .detail-body { white-space: pre-wrap; line-height: 1.8; }
 
         /* Actions */
@@ -186,11 +226,12 @@
         .btn:hover { background: var(--bg-hover); }
         .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
         .btn-primary:hover { background: var(--accent-hover); }
+        .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 
         /* Board list */
         .board-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 0.75rem;
         }
         .board-item {
@@ -201,7 +242,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            transition: all 0.2s;
         }
+        .board-item:hover { border-color: var(--accent); }
         .board-item .count { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
 
         /* Platform cards */
@@ -210,11 +253,25 @@
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1.5rem;
-            margin-bottom: 1rem;
+            transition: all 0.2s;
         }
-        .platform-card h3 { color: var(--accent); margin-bottom: 0.5rem; }
-        .platform-card .pay { color: var(--green); font-weight: 600; }
-        .platform-card .tasks { color: var(--text-muted); margin: 0.5rem 0; }
+        .platform-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+        .platform-card h3 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1rem; }
+        .platform-card .pay { color: var(--green); font-weight: 600; font-size: 0.9rem; }
+        .platform-card .tasks { color: var(--text-muted); margin: 0.5rem 0; font-size: 0.85rem; }
+        .platform-card .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+        .platform-card .actions { margin-top: 1rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .board-list { grid-template-columns: repeat(2, 1fr); }
+            nav { flex-wrap: wrap; gap: 1rem; }
+        }
     </style>
 </head>
 <body>

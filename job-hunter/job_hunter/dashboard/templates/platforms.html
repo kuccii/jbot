@@ -3,44 +3,56 @@
 {% block title %}Platforms — Job Hunter{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 2rem;">AI Training & Gig Platforms</h1>
+<h1 style="margin-bottom: 1rem;">AI Training & Gig Platforms</h1>
+<p style="color: var(--text-muted); margin-bottom: 2rem;">
+    Sign up, pass the qualification test, and start earning. These platforms pay for RLHF, data labeling, and AI training tasks.
+</p>
 
-<!-- Platform cards -->
+<!-- Sign-Up Platforms Grid -->
 <div class="card">
-    <h2>Sign-Up Platforms</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-        These platforms pay for AI training tasks (RLHF, data labeling, annotation).
-        Sign up, pass the qualification test, and start earning.
-    </p>
-
-    {% for p in platforms %}
-    <div class="platform-card">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h3>{{ p.title[:60] }}</h3>
-                <div class="tasks">{{ p.description[:200] }}</div>
+    <h2>💰 Sign-Up Platforms</h2>
+    <div class="grid" style="margin-top: 1rem;">
+        {% for p in platforms %}
+        <div class="platform-card">
+            <h3>{{ p.title[:45] }}</h3>
+            <div class="tasks">{{ p.description[:120] }}</div>
+            <div class="tags">
+                {% for tag in p.tags.split(',') if tag.strip() %}
+                <span class="badge badge-board">{{ tag.strip() }}</span>
+                {% endfor %}
             </div>
-            <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+            <div class="actions">
+                <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 
-<!-- Recent AI gigs -->
+<!-- Recent AI Gigs Grid -->
 <div class="card">
-    <h2>Recent AI Training Gigs (OpenTrain)</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+    <h2>🎯 Recent AI Training Gigs</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
         Live gigs from OpenTrain.ai — apply directly.
     </p>
-
-    {% for gig in ai_gigs %}
-    <div class="job-card">
-        <h3><a href="{{ gig.url }}" target="_blank">{{ gig.title[:70] }}</a></h3>
-        <div class="meta">
-            <span class="badge badge-board">opentrain</span>
-            {% if gig.tags %} · Tags: {{ gig.tags }}{% endif %}
+    <div class="grid">
+        {% for gig in ai_gigs %}
+        <div class="grid-item">
+            <div class="tags">
+                <span class="badge badge-board">opentrain</span>
+                {% if gig.tags %}
+                {% for tag in gig.tags.split(',') if tag.strip() %}
+                <span class="badge" style="background: var(--bg); color: var(--text);">{{ tag.strip() }}</span>
+                {% endfor %}
+                {% endif %}
+            </div>
+            <h3 style="margin-top: 0.5rem;"><a href="{{ gig.url }}" target="_blank">{{ gig.title[:55] }}</a></h3>
+            <div class="meta">🌍 Worldwide · Remote</div>
+            <div class="actions" style="margin-top: 0.75rem;">
+                <a href="{{ gig.url }}" target="_blank" class="btn btn-sm btn-primary">Apply →</a>
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 {% endblock %}
