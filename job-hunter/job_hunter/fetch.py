@@ -46,11 +46,21 @@ async def get(client: httpx.AsyncClient, url: str, timeout: float = 15.0,
     raise last_error or httpx.TransportError(f"failed to fetch {url}")
 
 
-def get_cf(url: str, timeout: float = 15.0) -> Optional[str]:
-    """Fetch URL using curl_cffi with Chrome impersonation.
+def get_cf(url: str, timeout: float = 15.0, impersonate: str = "chrome") -> Optional[str]:
+    """Fetch URL using curl_cffi with browser impersonation.
 
     Bypasses Cloudflare challenges that block regular httpx/requests.
     Returns the response text, or None on failure.
+
+    Parameters
+    ----------
+    url:
+        The URL to fetch.
+    timeout:
+        Request timeout in seconds.
+    impersonate:
+        Browser to impersonate. "chrome" works for most sites,
+        "safari" is needed for Indeed (blocks Chrome).
 
     This is a *sync* function — use from async code via asyncio.to_thread().
     """
@@ -59,7 +69,7 @@ def get_cf(url: str, timeout: float = 15.0) -> Optional[str]:
     try:
         resp = _cf_requests.get(
             url,
-            impersonate="chrome",
+            impersonate=impersonate,
             timeout=timeout,
             headers={"Accept-Language": "en-US,en;q=0.9"},
         )
