@@ -145,6 +145,7 @@ class Config(BaseModel):
         "opentrain": True,
         "dynamitejobs": True,
         "trulyremote": True,
+        "gig_platforms": True,
         "weworkremotely": False,  # unreliable (403s from datacenter IPs)
     })
     keywords: list[str] = Field(default_factory=list)
