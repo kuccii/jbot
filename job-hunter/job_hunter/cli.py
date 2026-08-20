@@ -156,6 +156,22 @@ def purge(status: str = typer.Argument("hidden", help="Status to delete (default
 
 
 @app.command()
+def analyze(
+    check_links: bool = typer.Option(True, "--check-links/--skip-links", help="Validate URLs (slower but thorough)"),
+    batch_size: int = typer.Option(10, help="Concurrent link checks"),
+):
+    """Analyze jobs: validate links, check quality, remove dead/duplicates."""
+    _fix_console_encoding()
+    import asyncio
+    from job_hunter.analyzer import analyze as run_analysis, print_summary
+
+    cfg = load_config()
+    print("Running job analysis...")
+    summary = asyncio.run(run_analysis(cfg.database, check_links=check_links, batch_size=batch_size))
+    print_summary(summary)
+
+
+@app.command()
 def dashboard(
     host: str = typer.Option("127.0.0.1", help="Host to bind"),
     port: int = typer.Option(8000, help="Port to bind"),
