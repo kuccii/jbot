@@ -114,7 +114,7 @@ async def update_status(job_id: int, status: str = Query(...)):
 
 @app.get("/platforms", response_class=HTMLResponse)
 async def platforms_page(request: Request):
-    """Gig platforms overview."""
+    """Platforms page with audience tabs."""
     conn = _get_db()
     try:
         platforms = conn.execute(
@@ -124,13 +124,25 @@ async def platforms_page(request: Request):
             "SELECT * FROM jobs WHERE board='opentrain' AND eligible=1 ORDER BY found_at DESC LIMIT 20"
         ).fetchall()
         indeed_jobs = conn.execute(
-            "SELECT * FROM jobs WHERE board='indeed' AND eligible=1 ORDER BY title"
+            "SELECT * FROM jobs WHERE board='indeed' AND eligible=1 ORDER BY title LIMIT 30"
+        ).fetchall()
+        entry_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE eligible=1 AND audience='entry' ORDER BY found_at DESC LIMIT 30"
+        ).fetchall()
+        creative_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE eligible=1 AND audience='creative' ORDER BY found_at DESC LIMIT 30"
+        ).fetchall()
+        tech_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE eligible=1 AND audience='tech' ORDER BY found_at DESC LIMIT 30"
         ).fetchall()
         return templates.TemplateResponse("platforms.html", {
             "request": request,
             "platforms": platforms,
             "ai_gigs": ai_gigs,
             "indeed_jobs": indeed_jobs,
+            "entry_jobs": entry_jobs,
+            "creative_jobs": creative_jobs,
+            "tech_jobs": tech_jobs,
         })
     finally:
         conn.close()
