@@ -116,6 +116,34 @@ GENERIC_TITLES = [
     "diversity internship", "early career",
 ]
 
+# Languages that are NOT English — if a job requires one of these,
+# it likely needs native/fluent speakers from that language region.
+NON_ENGLISH_LANGUAGES = [
+    "vietnamese", "thai", "korean", "japanese", "chinese",
+    "mandarin", "cantonese", "cyrillic", "russian", "polish",
+    "czech", "hungarian", "romanian", "bulgarian", "croatian",
+    "serbian", "slovak", "slovenian", "estonian", "latvian",
+    "lithuanian", "turkish", "arabic", "hebrew", "hindi",
+    "urdu", "bengali", "tamil", "telugu", "marathi",
+    "malay", "indonesian", "filipino", "tagalog",
+    "portuguese", "spanish", "french", "german", "italian",
+    "dutch", "swedish", "norwegian", "danish", "finnish",
+    "greek", "ukrainian", "kazakh",
+]
+
+# Pattern to detect bilingual requirements in titles.
+# Examples: "Bilingual (Vietnamese/English)", "Spanish Speaking", "Fluent in French"
+BILINGUAL_TITLE_RE = re.compile(
+    r"bilingual\s*\(([^)]+)\)"
+    r"|\bfluent\s+in\s+(\w+)"
+    r"|\b(\w+)\s*\/\s*english"
+    r"|\benglish\s*\/\s*(\w+)"
+    r"|\bspeaking\s+(\w+)"
+    r"|\b(\w+)\s+speaking"
+    r"|\b(mandarin|cantonese|korean|japanese|vietnamese|thai|arabic|hebrew|polish|czech|hungarian|russian|turkish|french|german|spanish|portuguese|dutch|italian)\b",
+    re.IGNORECASE,
+)
+
 # Timezone / business-hours restrictions buried in descriptions.
 TIMEZONE_RESTRICTIONS = [
     "us hours", "us timezone", "eastern time", "pacific time",
@@ -224,6 +252,25 @@ def check_eligibility(job: Job) -> tuple[bool, str]:
         return False, f"generic posting: {job.title[:50]}"
     if _has_title_region_restriction(job.title):
         return False, f"title has region restriction: {job.title[:50]}"
+
+    # 0c. Fast-reject: bilingual jobs requiring non-English languages.
+    # "Remote Bilingual Customer Support (Vietnamese/English)" -> reject
+    # "Remote Bilingual Customer Support (English)" -> allow (English only)
+    lang_match = BILINGUAL_TITLE_RE.search(job.title)
+    if lang_match:
+        # Extract all captured groups
+        groups = [g for g in lang_match.groups() if g]
+        for lang in groups:
+            lang_lower = lang.lower().strip()
+            # Check if it's a non-English language
+            if lang_lower in NON_ENGLISH_LANGUAGES or any(le in lang_lower for le in NON_ENGLISH_LANGUAGES):
+                return False, f"requires non-English language: {lang}"
+            # Check if it's a slash pair like "Vietnamese/English"
+            if "/" in lang:
+                parts = [p.strip().lower() for p in lang.split("/")]
+                non_eng = [p for p in parts if p != "english" and p in NON_ENGLISH_LANGUAGES]
+                if non_eng:
+                    return False, f"requires non-English language: {', '.join(non_eng)}"
 
     # 0b. Fast-reject: description-based timezone/region restrictions.
     desc_reject = _has_description_restrictions(job.description)
