@@ -104,6 +104,9 @@ def _extract_jobs(html: str, domain: str, country: str, skill: str) -> list[dict
             url = urls[i] if i < len(urls) else ""
             title_blocks.append((url, unescape(title).strip()))
 
+    # Extract data-jk values for constructing /viewjob URLs
+    jk_values = re.findall(r'data-jk="([^"]+)"', html)
+
     # Extract companies
     companies = re.findall(
         r'data-testid="company-name"[^>]*>([^<]+)<', html
@@ -129,7 +132,13 @@ def _extract_jobs(html: str, domain: str, country: str, skill: str) -> list[dict
         company = unescape(companies[i]).strip() if i < len(companies) else ""
         location = unescape(locations[i]).strip() if i < len(locations) else ""
 
-        if url_path.startswith("/"):
+        # Decode HTML entities in URL (e.g. &amp; -> &)
+        url_path = unescape(url_path)
+
+        # Use /viewjob?jk= URL if we have the data-jk value (canonical, works in browser)
+        if i < len(jk_values):
+            url = f"https://{domain}/viewjob?jk={jk_values[i]}"
+        elif url_path.startswith("/"):
             url = f"https://{domain}{url_path}"
         else:
             url = f"https://{domain}/{url_path}"
