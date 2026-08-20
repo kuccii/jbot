@@ -172,6 +172,36 @@ def analyze(
 
 
 @app.command()
+def cleanup(
+    stale_days: int = typer.Option(30, help="Remove jobs older than N days"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
+):
+    """Clean database: re-check eligibility, remove stale/duplicates."""
+    _fix_console_encoding()
+    from job_hunter.cleanup import full_cleanup
+
+    cfg = load_config()
+
+    if not yes:
+        print("This will:")
+        print("  1. Re-check eligibility on all jobs (remove ones that no longer qualify)")
+        print(f"  2. Remove jobs older than {stale_days} days with status 'new'")
+        print("  3. Remove duplicates (keep newest)")
+        if not typer.confirm("Continue?"):
+            print("Cancelled.")
+            return
+
+    result = full_cleanup(cfg.database, stale_days)
+
+    print(f"\nCleanup complete:")
+    print(f"  Eligibility removed: {result['eligibility_removed']}")
+    print(f"  Stale removed:       {result['stale_removed']}")
+    print(f"  Duplicates removed:  {result['dupes_removed']}")
+    print(f"  Final total:         {result['final_total']}")
+    print(f"  Final eligible:      {result['final_eligible']}")
+
+
+@app.command()
 def dashboard(
     host: str = typer.Option("127.0.0.1", help="Host to bind"),
     port: int = typer.Option(8000, help="Port to bind"),
