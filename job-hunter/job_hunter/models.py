@@ -9,6 +9,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Audience segments for categorizing jobs.
+# Each job gets one or more audience tags so the dashboard can filter.
+AUDIENCE_TECH = "tech"
+AUDIENCE_ENTRY = "entry"
+AUDIENCE_CREATIVE = "creative"
+AUDIENCE_GIG = "gig"
+
 
 def _norm_key(text: str) -> str:
     """Normalize a string for cross-board duplicate matching.
@@ -32,6 +39,8 @@ class Job:
     posted_at: str = ""
     # Countries explicitly listed as eligible (e.g. Remote4Africa).
     eligible_countries: list[str] = field(default_factory=list)
+    # Audience segment: tech | entry | creative | gig (comma-separated if multiple)
+    audience: str = ""
 
     def as_dict(self) -> dict:
         return {
@@ -45,6 +54,7 @@ class Job:
             "description": self.description,
             "posted_at": self.posted_at,
             "eligible_countries": ",".join(self.eligible_countries),
+            "audience": self.audience,
         }
 
 
@@ -64,10 +74,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     eligible INTEGER DEFAULT 0,
     eligibility_note TEXT DEFAULT '',
     status TEXT DEFAULT 'new',
+    audience TEXT DEFAULT '',
     found_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_jobs_board ON jobs(board);
 CREATE INDEX IF NOT EXISTS ix_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS ix_jobs_audience ON jobs(audience);
 """
 
 
@@ -77,8 +89,13 @@ class Store:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(path))
         self.conn.row_factory = sqlite3.Row
+        # Migration: add audience column if missing (for existing DBs)
+        try:
+            self.conn.execute("ALTER TABLE jobs ADD COLUMN audience TEXT DEFAULT ''")
+            self.conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         self.conn.executescript(SCHEMA)
-        self.conn.commit()
 
     def add_job(self, job: Job, eligible: bool, note: str) -> str:
         """Insert if new. Returns 'new', 'exists', or 'duplicate'.
@@ -111,13 +128,15 @@ class Store:
         self.conn.execute(
             """INSERT INTO jobs
                (title, company, url, board, location, remote, tags, description,
-                posted_at, eligible_countries, eligible, eligibility_note, status, found_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                posted_at, eligible_countries, eligible, eligibility_note, status,
+                audience, found_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 job.title, job.company, job.url, job.board, job.location,
                 job.remote, job.tags, job.description, job.posted_at,
                 ",".join(job.eligible_countries),
                 1 if eligible else 0, note, "new",
+                job.audience,
                 datetime.now(timezone.utc).isoformat(timespec="seconds"),
             ),
         )
@@ -125,7 +144,8 @@ class Store:
         return "new"
 
     def list_jobs(self, board: str | None = None, eligible_only: bool = True,
-                  status: str | None = None, limit: int = 100) -> list[sqlite3.Row]:
+                  status: str | None = None, audience: str | None = None,
+                  limit: int = 100) -> list[sqlite3.Row]:
         query = "SELECT * FROM jobs"
         clauses, params = [], []
         if eligible_only:
@@ -136,6 +156,9 @@ class Store:
         if status:
             clauses.append("status = ?")
             params.append(status)
+        if audience:
+            clauses.append("audience LIKE ?")
+            params.append(f"%{audience}%")
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
         query += " ORDER BY found_at DESC LIMIT ?"
@@ -153,7 +176,13 @@ class Store:
                 "SELECT board, COUNT(*) AS n FROM jobs GROUP BY board ORDER BY n DESC"
             )
         }
-        return {"total": total, "eligible": eligible, "by_board": by_board}
+        by_audience = {
+            r["audience"]: r["n"]
+            for r in self.conn.execute(
+                "SELECT audience, COUNT(*) AS n FROM jobs WHERE audience != '' GROUP BY audience ORDER BY n DESC"
+            )
+        }
+        return {"total": total, "eligible": eligible, "by_board": by_board, "by_audience": by_audience}
 
     def mark(self, job_id: int, status: str) -> bool:
         cur = self.conn.execute(
@@ -161,6 +190,34 @@ class Store:
         )
         self.conn.commit()
         return cur.rowcount > 0
+
+    def search(self, query: str = "", board: str | None = None,
+               audience: str | None = None,
+               eligible_only: bool = True, limit: int = 50) -> list[sqlite3.Row]:
+        """Search jobs by keyword in title, company, or description."""
+        clauses: list[str] = []
+        params: list = []
+        if eligible_only:
+            clauses.append("eligible = 1")
+        if board:
+            clauses.append("board = ?")
+            params.append(board)
+        if audience:
+            clauses.append("audience LIKE ?")
+            params.append(f"%{audience}%")
+        if query:
+            clauses.append("(title LIKE ? OR company LIKE ? OR description LIKE ?)")
+            q = f"%{query}%"
+            params.extend([q, q, q])
+        sql = "SELECT * FROM jobs"
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY found_at DESC LIMIT ?"
+        params.append(limit)
+        return self.conn.execute(sql, params).fetchall()
+
+    def get_job(self, job_id: int) -> sqlite3.Row | None:
+        return self.conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
 
     def purge(self, status: str = "hidden") -> int:
         cur = self.conn.execute("DELETE FROM jobs WHERE status = ?", (status,))

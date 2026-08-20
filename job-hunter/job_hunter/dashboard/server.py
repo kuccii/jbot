@@ -60,13 +60,14 @@ async def jobs_page(
     board: str = Query("", help="Filter by board"),
     status: str = Query("", help="Filter by status"),
     search: str = Query("", help="Search keywords"),
+    audience: str = Query("", help="Filter by audience"),
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=5, le=100),
 ):
     """Job listing page with filters."""
     conn = _get_db()
     try:
-        jobs, total, pages = _query_jobs(conn, board, status, search, page, per_page)
+        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page)
         boards = [r["board"] for r in conn.execute(
             "SELECT DISTINCT board FROM jobs WHERE eligible=1 ORDER BY board"
         ).fetchall()]
@@ -77,7 +78,7 @@ async def jobs_page(
             "page": page,
             "pages": pages,
             "boards": boards,
-            "filters": {"board": board, "status": status, "search": search},
+            "filters": {"board": board, "status": status, "search": search, "audience": audience},
         })
     finally:
         conn.close()
@@ -154,13 +155,14 @@ async def api_jobs(
     board: str = "",
     status: str = "",
     search: str = "",
+    audience: str = "",
     page: int = 1,
     per_page: int = 25,
 ):
     """JSON job listing."""
     conn = _get_db()
     try:
-        jobs, total, pages = _query_jobs(conn, board, status, search, page, per_page)
+        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page)
         return {
             "jobs": [dict(j) for j in jobs],
             "total": total,
@@ -194,6 +196,15 @@ def _get_stats(conn: sqlite3.Connection) -> dict:
         ).fetchall()
     }
 
+    by_audience = {
+        r["audience"]: r["n"]
+        for r in conn.execute(
+            """SELECT CASE WHEN audience='' THEN 'untagged' ELSE audience END as audience,
+                      COUNT(*) as n FROM jobs WHERE eligible=1
+               GROUP BY audience ORDER BY n DESC"""
+        ).fetchall()
+    }
+
     # Jobs added per day (last 7 days)
     daily = [
         {"date": r["date"], "count": r["n"]}
@@ -209,6 +220,7 @@ def _get_stats(conn: sqlite3.Connection) -> dict:
         "eligible": eligible,
         "by_board": by_board,
         "by_status": by_status,
+        "by_audience": by_audience,
         "daily": daily,
     }
 
@@ -218,6 +230,7 @@ def _query_jobs(
     board: str,
     status: str,
     search: str,
+    audience: str,
     page: int,
     per_page: int,
 ) -> tuple[list, int, int]:
@@ -231,6 +244,9 @@ def _query_jobs(
     if status:
         where.append("status=?")
         params.append(status)
+    if audience:
+        where.append("audience LIKE ?")
+        params.append(f"%{audience}%")
     if search:
         where.append("(title LIKE ? OR company LIKE ? OR description LIKE ?)")
         q = f"%{search}%"

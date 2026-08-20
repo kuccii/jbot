@@ -5,8 +5,8 @@ curl_cffi with Safari impersonation to scrape job listings from multiple
 country-specific Indeed domains. Each domain uses the /remote-*-jobs
 path which returns structured job data.
 
-Sequential requests with 3s delays to avoid IP-based rate limits.
-Visa sponsorship jobs are tagged for the dashboard visa tab.
+Sequential requests with 2.5s delays to avoid IP-based rate limits.
+Jobs are tagged with audience segments for dashboard filtering.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from html import unescape
 
 from job_hunter.boards.base import Board
 from job_hunter.fetch import get_cf
-from job_hunter.models import Job
+from job_hunter.models import Job, AUDIENCE_TECH, AUDIENCE_ENTRY, AUDIENCE_CREATIVE
 
 # All working Indeed country domains.
 COUNTRIES: list[tuple[str, str]] = [
@@ -46,16 +46,29 @@ COUNTRIES: list[tuple[str, str]] = [
     ("www.indeed.co.za", "S.Africa"),
 ]
 
-# Skill categories to search across all countries.
-SKILLS = [
-    "python-developer",
-    "software-engineer",
-    "data-scientist",
-    "machine-learning",
+# Skill categories grouped by audience.
+# Each tuple: (skill_slug, audience_tag)
+# Kept to ~12 skills so the full run (12 × 19 countries × 1 page) completes in ~5 min.
+SKILLS: list[tuple[str, str]] = [
+    # ── Tech / Developer (4) ─────────────────────────────────────────
+    ("python-developer", AUDIENCE_TECH),
+    ("software-engineer", AUDIENCE_TECH),
+    ("data-scientist", AUDIENCE_TECH),
+    ("machine-learning", AUDIENCE_TECH),
+    # ── Entry-Level / Fast Entry — no degree required (5) ────────────
+    ("virtual-assistant", AUDIENCE_ENTRY),
+    ("data-entry-clerk", AUDIENCE_ENTRY),
+    ("customer-support", AUDIENCE_ENTRY),
+    ("chat-support", AUDIENCE_ENTRY),
+    ("transcriptionist", AUDIENCE_ENTRY),
+    # ── Creative / Marketing (3) ─────────────────────────────────────
+    ("content-writer", AUDIENCE_CREATIVE),
+    ("graphic-designer", AUDIENCE_CREATIVE),
+    ("social-media-manager", AUDIENCE_CREATIVE),
 ]
 
 # Pages per skill-country combo (10 jobs per page).
-MAX_PAGES = 2
+MAX_PAGES = 1
 
 # Delay between requests in seconds. Indeed bans IPs after ~20 rapid requests.
 REQUEST_DELAY = 2.5
@@ -157,16 +170,16 @@ class IndeedBoard(Board):
         rate_limited = 0
 
         # Build all URL tasks: every skill × every country × every page
-        tasks: list[tuple[str, str, str, str]] = []
+        tasks: list[tuple[str, str, str, str, str]] = []
         for domain, country in COUNTRIES:
-            for skill in SKILLS:
+            for skill, audience in SKILLS:
                 for page in range(MAX_PAGES):
                     start = page * 10
                     url = _build_url(domain, skill, start)
-                    tasks.append((url, domain, country, skill))
+                    tasks.append((url, domain, country, skill, audience))
 
         # Process sequentially with delays to avoid rate limits
-        for url, domain, country, skill in tasks:
+        for url, domain, country, skill, audience in tasks:
             if len(all_jobs) >= limit:
                 break
 
@@ -177,7 +190,6 @@ class IndeedBoard(Board):
             result = await asyncio.to_thread(get_cf, url, 12.0, "safari")
 
             if not result:
-                # Likely rate-limited — back off
                 rate_limited += 1
                 await asyncio.sleep(5.0)
                 continue
@@ -202,7 +214,7 @@ class IndeedBoard(Board):
                     continue
                 seen.add(key)
 
-                tags = f"{job['skill']} {job['country']}"
+                tags = f"{skill} {job['country']}"
                 if job["visa_sponsorship"]:
                     tags += " visa-sponsorship"
 
@@ -217,6 +229,7 @@ class IndeedBoard(Board):
                     description=f"Indeed {job['country']}: {job['title']} at {job['company']}",
                     posted_at="",
                     eligible_countries=[],
+                    audience=audience,
                 ))
 
                 if len(all_jobs) >= limit:

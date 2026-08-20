@@ -40,6 +40,34 @@
     </div>
 </div>
 
+<!-- Audience Grid -->
+<div class="card">
+    <h2>Jobs by Audience</h2>
+    <div class="grid" style="margin-top: 1rem;">
+        {% for aud, count in stats.by_audience.items() %}
+        <a href="/jobs?audience={{ aud }}" class="grid-item" style="text-decoration: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>
+                    {% if aud == 'tech' %}💻
+                    {% elif aud == 'entry' %}🚀
+                    {% elif aud == 'creative' %}🎨
+                    {% elif aud == 'gig' %}⚡
+                    {% else %}📋
+                    {% endif %}
+                    {% if aud == 'tech' %}Tech / Developer
+                    {% elif aud == 'entry' %}Entry-Level
+                    {% elif aud == 'creative' %}Creative
+                    {% elif aud == 'gig' %}Gig / AI Training
+                    {% else %}{{ aud }}
+                    {% endif %}
+                </span>
+                <span class="number" style="font-size: 1.8rem;">{{ count }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
 <!-- Status Grid -->
 <div class="card">
     <h2>Status Overview</h2>

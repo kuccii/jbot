@@ -27,6 +27,13 @@
         <option value="applied" {% if filters.status == 'applied' %}selected{% endif %}>📤 Applied</option>
         <option value="hidden" {% if filters.status == 'hidden' %}selected{% endif %}>👁️ Hidden</option>
     </select>
+    <select name="audience">
+        <option value="">All audiences</option>
+        <option value="tech" {% if filters.audience == 'tech' %}selected{% endif %}>💻 Tech / Developer</option>
+        <option value="entry" {% if filters.audience == 'entry' %}selected{% endif %}>🚀 Entry-Level / Fast Entry</option>
+        <option value="creative" {% if filters.audience == 'creative' %}selected{% endif %}>🎨 Creative / Marketing</option>
+        <option value="gig" {% if filters.audience == 'gig' %}selected{% endif %}>⚡ Gig / AI Training</option>
+    </select>
     <button type="submit">Filter</button>
 </form>
 
@@ -99,21 +106,21 @@
 {% if pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-    <a href="?page={{ page-1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">← Prev</a>
+    <a href="?page={{ page-1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}&audience={{ filters.audience }}">← Prev</a>
     {% endif %}
 
     {% for p in range(1, pages + 1) %}
         {% if p == page %}
         <span class="active">{{ p }}</span>
         {% elif p <= 3 or p > pages - 3 or (p >= page - 2 and p <= page + 2) %}
-        <a href="?page={{ p }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">{{ p }}</a>
+        <a href="?page={{ p }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}&audience={{ filters.audience }}">{{ p }}</a>
         {% elif p == 4 or p == pages - 3 %}
         <span>...</span>
         {% endif %}
     {% endfor %}
 
     {% if page < pages %}
-    <a href="?page={{ page+1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}">Next →</a>
+    <a href="?page={{ page+1 }}&board={{ filters.board }}&status={{ filters.status }}&search={{ filters.search }}&audience={{ filters.audience }}">Next →</a>
     {% endif %}
 </div>
 {% endif %}

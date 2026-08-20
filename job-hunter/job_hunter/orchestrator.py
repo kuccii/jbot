@@ -13,7 +13,28 @@ from job_hunter.boards.remoteok import RemoteOKBoard
 from job_hunter.boards.ats import ATSBoard
 from job_hunter.boards.scam_filter import is_unreliable
 from job_hunter.config import Config
-from job_hunter.models import Job, Store
+from job_hunter.models import Job, Store, AUDIENCE_TECH, AUDIENCE_ENTRY, AUDIENCE_GIG
+
+
+# Default audience tags per board. Indeed sets its own per-skill.
+_BOARD_AUDIENCE: dict[str, str] = {
+    "remoteok": AUDIENCE_TECH,
+    "remote4africa": AUDIENCE_TECH,
+    "himalayas": AUDIENCE_TECH,
+    "remotive": AUDIENCE_TECH,
+    "jobicy": AUDIENCE_TECH,
+    "workingnomads": AUDIENCE_TECH,
+    "persona": AUDIENCE_TECH,
+    "ats": AUDIENCE_TECH,
+    "arc": AUDIENCE_TECH,
+    "foundthejob": AUDIENCE_ENTRY,
+    "opentrain": AUDIENCE_GIG,
+    "dynamitejobs": AUDIENCE_TECH,
+    "trulyremote": AUDIENCE_TECH,
+    "gig_platforms": AUDIENCE_GIG,
+    "startupjobs": AUDIENCE_TECH,
+    "meetfrank": AUDIENCE_TECH,
+}
 
 
 def _log(msg: str) -> None:
@@ -54,6 +75,9 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
             continue  # store only Rwanda-eligible roles
         if not eligibility.matches_keywords(job, cfg.keywords):
             continue
+        # Auto-tag audience if the board didn't set one
+        if not job.audience:
+            job.audience = _BOARD_AUDIENCE.get(name, AUDIENCE_TECH)
         eligible += 1
         result = store.add_job(job, ok, note)
         if result == "new":
