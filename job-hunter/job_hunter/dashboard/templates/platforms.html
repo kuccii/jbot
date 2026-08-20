@@ -24,8 +24,31 @@
         No degree required — these jobs are accessible to anyone with basic computer skills.
         Virtual assistants, data entry, customer support, and more.
     </p>
+
+    <!-- Entry-Level Platforms -->
+    <h3 style="margin-bottom: 1rem;">📋 Platforms to Sign Up</h3>
     <div class="grid">
-        {% for job in entry_jobs %}
+        {% for p in entry_platforms %}
+        <div class="platform-card">
+            <h3>{{ p.title[:50] }}</h3>
+            <div class="tasks">{{ p.description[:150] }}</div>
+            <div class="tags">
+                {% for tag in p.tags.split(',') if tag.strip() %}
+                <span class="badge badge-board">{{ tag.strip() }}</span>
+                {% endfor %}
+            </div>
+            <div class="actions">
+                <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Workday / BPO Jobs -->
+    {% if workday_jobs %}
+    <h3 style="margin: 2rem 0 1rem;">🏢 Workday / BPO Jobs</h3>
+    <div class="grid">
+        {% for job in workday_jobs %}
         <div class="grid-item">
             <div class="tags">
                 <span class="badge badge-board">{{ job.board }}</span>
@@ -42,7 +65,29 @@
         </div>
         {% endfor %}
     </div>
-    {% if not entry_jobs %}
+    {% endif %}
+
+    <!-- Indeed Entry-Level -->
+    {% if entry_jobs %}
+    <h3 style="margin: 2rem 0 1rem;">🔍 Indeed Entry-Level Jobs</h3>
+    <div class="grid">
+        {% for job in entry_jobs[:20] %}
+        <div class="grid-item">
+            <div class="tags">
+                <span class="badge badge-board">{{ job.board }}</span>
+                <span class="badge" style="background: #10b981; color: white;">entry-level</span>
+            </div>
+            <h3 style="margin-top: 0.5rem;"><a href="{{ job.url }}" target="_blank">{{ job.title[:55] }}</a></h3>
+            <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
+            <div class="actions" style="margin-top: 0.75rem;">
+                <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">View on Indeed →</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if not entry_jobs and not entry_platforms and not workday_jobs %}
     <div class="card" style="text-align: center; padding: 2rem;">
         <p style="color: var(--text-muted);">No entry-level jobs found yet. Run discovery to fetch more.</p>
     </div>

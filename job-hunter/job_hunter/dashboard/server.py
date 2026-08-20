@@ -126,6 +126,12 @@ async def platforms_page(request: Request):
         indeed_jobs = conn.execute(
             "SELECT * FROM jobs WHERE board='indeed' AND eligible=1 ORDER BY title LIMIT 30"
         ).fetchall()
+        entry_platforms = conn.execute(
+            "SELECT * FROM jobs WHERE board='entry_platforms' AND eligible=1 ORDER BY title"
+        ).fetchall()
+        workday_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE board='workday' AND eligible=1 ORDER BY found_at DESC LIMIT 20"
+        ).fetchall()
         entry_jobs = conn.execute(
             "SELECT * FROM jobs WHERE eligible=1 AND audience='entry' ORDER BY found_at DESC LIMIT 30"
         ).fetchall()
@@ -138,6 +144,8 @@ async def platforms_page(request: Request):
         return templates.TemplateResponse("platforms.html", {
             "request": request,
             "platforms": platforms,
+            "entry_platforms": entry_platforms,
+            "workday_jobs": workday_jobs,
             "ai_gigs": ai_gigs,
             "indeed_jobs": indeed_jobs,
             "entry_jobs": entry_jobs,

@@ -34,6 +34,8 @@ _BOARD_AUDIENCE: dict[str, str] = {
     "gig_platforms": AUDIENCE_GIG,
     "startupjobs": AUDIENCE_TECH,
     "meetfrank": AUDIENCE_TECH,
+    "workday": AUDIENCE_ENTRY,
+    "entry_platforms": AUDIENCE_ENTRY,
 }
 
 
