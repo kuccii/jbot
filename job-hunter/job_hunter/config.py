@@ -151,6 +151,8 @@ class Config(BaseModel):
         "meetfrank": True,
         "workday": True,
         "entry_platforms": True,
+        "indeed_entry": True,
+        "wwr_entry": True,
         "weworkremotely": False,  # unreliable (403s from datacenter IPs)
     })
     keywords: list[str] = Field(default_factory=list)

@@ -25,6 +25,8 @@ from job_hunter.boards.startupjobs import StartupJobsBoard
 from job_hunter.boards.meetfrank import MeetFrankBoard
 from job_hunter.boards.workday import WorkdayBoard
 from job_hunter.boards.entry_platforms import EntryPlatformsBoard
+from job_hunter.boards.indeed_entry import IndeedEntryBoard
+from job_hunter.boards.wwr_entry import WWREntryBoard
 
 # Board name -> class mapping. The orchestrator instantiates these with
 # per-run config (e.g. RemoteOKBoard needs keyword tags, ATSBoard needs
@@ -46,8 +48,10 @@ BOARDS: dict[str, type[Board]] = {
     "trulyremote": TrulyRemoteBoard,
     "gig_platforms": GigPlatformsBoard,
     "indeed": IndeedBoard,
+    "indeed_entry": IndeedEntryBoard,
     "startupjobs": StartupJobsBoard,
     "meetfrank": MeetFrankBoard,
     "workday": WorkdayBoard,
     "entry_platforms": EntryPlatformsBoard,
+    "wwr_entry": WWREntryBoard,
 }
