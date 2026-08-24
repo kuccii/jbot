@@ -9,7 +9,10 @@ Or from CLI:
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
+import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Query, Request
@@ -20,6 +23,9 @@ from job_hunter.config import load_config
 from job_hunter.models import SCHEMA
 
 app = FastAPI(title="Job Hunter Dashboard", version="1.0.0")
+
+# Discovery state
+_discovery_state = {"running": False, "last_result": None, "last_run": None}
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -44,12 +50,16 @@ async def home(request: Request):
     conn = _get_db()
     try:
         stats = _get_stats(conn)
+        # Show entry-level first, then by newest
         recent = conn.execute(
-            "SELECT * FROM jobs WHERE eligible=1 ORDER BY found_at DESC LIMIT 10"
+            """SELECT * FROM jobs WHERE eligible=1
+               ORDER BY CASE WHEN audience='entry' THEN 0 ELSE 1 END,
+               found_at DESC LIMIT 12"""
         ).fetchall()
         return templates.TemplateResponse(request, "home.html", {
             "stats": stats,
             "recent": recent,
+            "discovery": _discovery_state,
         })
     finally:
         conn.close()
@@ -62,11 +72,11 @@ async def jobs_page(
     status: str = Query("", help="Filter by status"),
     search: str = Query("", help="Search keywords"),
     audience: str = Query("", help="Filter by audience"),
-    sort: str = Query("found_at", help="found_at (newest) or score (best fit)"),
+    sort: str = Query("entry_first", help="entry_first, found_at, or score"),
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=5, le=100),
 ):
-    """Job listing page with filters."""
+    """Job listing page with filters. Default: entry-level first."""
     conn = _get_db()
     try:
         jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page, sort)
@@ -158,6 +168,40 @@ async def platforms_page(request: Request):
 # ---------------------------------------------------------------------------
 # API endpoints (JSON)
 # ---------------------------------------------------------------------------
+
+@app.post("/api/discover")
+async def api_discover():
+    """Trigger a discovery run in the background."""
+    if _discovery_state["running"]:
+        return JSONResponse({"status": "already_running"})
+
+    def _run():
+        _discovery_state["running"] = True
+        try:
+            cfg = load_config()
+            from job_hunter.orchestrator import run_discover
+            results = run_discover(cfg)
+            total_new = sum(r.get("added", 0) for r in results)
+            _discovery_state["last_result"] = {
+                "boards_run": len(results),
+                "total_new": total_new,
+                "results": results,
+            }
+            _discovery_state["last_run"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            _discovery_state["last_result"] = {"error": str(e)}
+        finally:
+            _discovery_state["running"] = False
+
+    threading.Thread(target=_run, daemon=True).start()
+    return JSONResponse({"status": "started"})
+
+
+@app.get("/api/discover/status")
+async def api_discover_status():
+    """Check discovery status."""
+    return _discovery_state
+
 
 @app.get("/api/stats")
 async def api_stats():
@@ -274,7 +318,12 @@ def _query_jobs(
         params.extend([q, q, q])
 
     where_clause = " AND ".join(where)
-    order_clause = "score DESC, found_at DESC" if sort == "score" else "found_at DESC"
+    if sort == "score":
+        order_clause = "score DESC, found_at DESC"
+    elif sort == "found_at":
+        order_clause = "found_at DESC"
+    else:  # entry_first (default)
+        order_clause = "CASE WHEN audience='entry' THEN 0 WHEN audience='gig' THEN 1 WHEN audience='creative' THEN 2 ELSE 3 END, score DESC, found_at DESC"
 
     total = conn.execute(
         f"SELECT COUNT(*) FROM jobs WHERE {where_clause}", params

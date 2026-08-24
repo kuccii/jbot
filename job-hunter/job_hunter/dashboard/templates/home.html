@@ -3,8 +3,18 @@
 {% block title %}Dashboard — Job Hunter{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
-<p class="subtitle">Real-time overview of your job discovery pipeline</p>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle" style="margin-bottom: 0;">Real-time overview of your job discovery pipeline</p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <div id="discovery-status" style="font-size: 0.8rem; color: var(--text-muted);"></div>
+        <button class="btn btn-primary" id="discover-btn" onclick="runDiscovery()">
+            🔍 Run Discovery
+        </button>
+    </div>
+</div>
 
 <!-- Stats Grid -->
 <div class="stats-grid">

@@ -34,6 +34,7 @@
         <option value="gig" {% if filters.audience == 'gig' %}selected{% endif %}>⚡ Gig / AI</option>
     </select>
     <select name="sort">
+        <option value="entry_first" {% if filters.sort == 'entry_first' %}selected{% endif %}>🚀 Entry-Level First</option>
         <option value="found_at" {% if filters.sort == 'found_at' %}selected{% endif %}>Newest first</option>
         <option value="score" {% if filters.sort == 'score' %}selected{% endif %}>Best fit first</option>
     </select>
@@ -181,6 +182,7 @@ function setView(view) {
     document.getElementById('btn-list').classList.toggle('active', view === 'list');
     localStorage.setItem('jobView', view);
 }
+// Default to grid view
 setView(localStorage.getItem('jobView') || 'grid');
 </script>
 {% endblock %}
