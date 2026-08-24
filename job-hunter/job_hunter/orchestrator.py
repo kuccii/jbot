@@ -65,7 +65,8 @@ _BOARD_AUDIENCE: dict[str, str] = {
     "startupjobs": AUDIENCE_TECH,
     "meetfrank": AUDIENCE_TECH,
     "workday": AUDIENCE_ENTRY,
-    "entry_platforms": AUDIENCE_ENTRY,
+    "alignerr": AUDIENCE_ENTRY,
+    "outlier": AUDIENCE_ENTRY,
     "indeed_entry": AUDIENCE_ENTRY,
     "wwr_entry": AUDIENCE_ENTRY,
 }
@@ -90,26 +91,27 @@ def _make_board(name: str, cfg: Config) -> Board:
 async def _run_board(name: str, store: Store, cfg: Config) -> dict:
     board = _make_board(name, cfg)
 
-    # Apply proxy for boards that need it
+    # Apply proxy ONLY for boards explicitly listed in force_proxy_boards.
+    # Env var placeholders like ${SCRAPERAPI_KEY} are NOT valid keys.
     proxy_cfg = cfg.proxy
+    def _has_real_key(val: str) -> bool:
+        return bool(val) and not val.startswith("${") and not val.startswith("$")
     use_proxy = (
-        proxy_cfg.proxy_url
-        or proxy_cfg.scraperapi_key
-        or proxy_cfg.scrapingbee_key
+        _has_real_key(proxy_cfg.proxy_url)
+        or _has_real_key(proxy_cfg.scraperapi_key)
+        or _has_real_key(proxy_cfg.scrapingbee_key)
         or name in proxy_cfg.force_proxy_boards
     )
     if use_proxy:
-        import os
         from job_hunter.fetch import get_proxy_manager
         pm = get_proxy_manager()
-        # Inject keys from config
-        if proxy_cfg.scraperapi_key:
+        if _has_real_key(proxy_cfg.scraperapi_key):
             pm.scraperapi_key = proxy_cfg.scraperapi_key
-        if proxy_cfg.scrapingbee_key:
+        if _has_real_key(proxy_cfg.scrapingbee_key):
             pm.scrapingbee_key = proxy_cfg.scrapingbee_key
-        if proxy_cfg.proxy_url:
+        if _has_real_key(proxy_cfg.proxy_url):
             pm.proxy_url = proxy_cfg.proxy_url
-        pm._last_fetch = 0.0  # Force refresh free proxies if needed
+        pm._last_fetch = 0.0
         _log(f"  [proxy] {name}: using proxy rotation")
 
     try:

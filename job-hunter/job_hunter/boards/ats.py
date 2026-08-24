@@ -48,7 +48,7 @@ class ATSBoard(Board):
 
     # Max postings fetched per company per run. Keeps the request count
     # bounded while still sampling each company's board.
-    PER_COMPANY_LIMIT = 10
+    PER_COMPANY_LIMIT = 25
 
     async def fetch(self, limit: int = 30) -> list[Job]:
         if not self.companies:

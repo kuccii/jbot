@@ -24,7 +24,8 @@ from job_hunter.boards.indeed import IndeedBoard
 from job_hunter.boards.startupjobs import StartupJobsBoard
 from job_hunter.boards.meetfrank import MeetFrankBoard
 from job_hunter.boards.workday import WorkdayBoard
-from job_hunter.boards.entry_platforms import EntryPlatformsBoard
+from job_hunter.boards.alignerr import AlignerrBoard
+from job_hunter.boards.outlier import OutlierBoard
 from job_hunter.boards.indeed_entry import IndeedEntryBoard
 from job_hunter.boards.wwr_entry import WWREntryBoard
 
@@ -52,6 +53,7 @@ BOARDS: dict[str, type[Board]] = {
     "startupjobs": StartupJobsBoard,
     "meetfrank": MeetFrankBoard,
     "workday": WorkdayBoard,
-    "entry_platforms": EntryPlatformsBoard,
+    "alignerr": AlignerrBoard,
+    "outlier": OutlierBoard,
     "wwr_entry": WWREntryBoard,
 }

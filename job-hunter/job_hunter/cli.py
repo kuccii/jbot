@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import sys
 import time
+from pathlib import Path
 
 import typer
 
@@ -318,7 +319,7 @@ def sync_db(
         raise typer.Exit(1)
 
     size_mb = Path(src).stat().st_size / (1024 * 1024)
-    print(f"Syncing {src} ({size_mb:.1f} MB) → {vps_user}@{vps_host}:{vps_path}")
+    print(f"Syncing {src} ({size_mb:.1f} MB) -> {vps_user}@{vps_host}:{vps_path}")
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
