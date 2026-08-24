@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Upwork Jobs{% endblock %}
+{% block content %}
+<div class="page-title">📌 Upwork Jobs</div>
+<div style="margin-bottom: 1rem;">
+    <a href="/upwork/settings" class="btn btn-secondary">⚙️ Settings</a>
+    <button onclick="runDiscovery()" class="btn btn-primary" style="margin-left: 0.5rem;">🔄 Fetch Jobs</button>
+    <span id="discovery-status" style="margin-left: 1rem; color: #666;"></span>
+</div>
+<div class="card">
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #eee;">
+                <th style="text-align: left; padding: 0.5rem;">Title</th>
+                <th style="text-align: left; padding: 0.5rem;">Client</th>
+                <th style="text-align: left; padding: 0.5rem;">Website</th>
+                <th style="text-align: left; padding: 0.5rem;">Status</th>
+                <th style="text-align: left; padding: 0.5rem;">Posted</th>
+                <th style="text-align: left; padding: 0.5rem;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opp in opportunities %}
+            <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 0.5rem;">
+                    <a href="{{ opp.url }}" target="_blank" style="text-decoration: none; color: #1976d2;">{{ opp.title[:60] }}{% if opp.title|length > 60 %}...{% endif %}</a>
+                </td>
+                <td style="padding: 0.5rem;">{{ opp.client_company or '—' }}</td>
+                <td style="padding: 0.5rem;">
+                    {% if opp.client_website %}
+                    <a href="{{ opp.client_website }}" target="_blank" style="font-size: 0.85rem;">visit</a>
+                    {% else %}—{% endif %}
+                </td>
+                <td style="padding: 0.5rem;">
+                    <span class="badge {{ 'badge-new' if opp.status == 'new' else 'badge-contacted' if opp.status == 'contacted' else '' }}">{{ opp.status }}</span>
+                </td>
+                <td style="padding: 0.5rem; font-size: 0.85rem; color: #666;">{{ opp.created_at[:10] if opp.created_at else '' }}</td>
+                <td style="padding: 0.5rem;">
+                    <a href="{{ opp.url }}" target="_blank" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="padding: 2rem; text-align: center; color: #999;">No Upwork jobs yet. <a href="/upwork/settings">Set keywords</a> and fetch jobs.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+async function runDiscovery() {
+    const status = document.getElementById('discovery-status');
+    status.textContent = 'Fetching...';
+    try {
+        const r = await fetch('/api/upwork/discover', { method: 'POST' });
+        const d = await r.json();
+        status.textContent = 'Found ' + d.count + ' new jobs!';
+        setTimeout(function() { location.reload(); }, 1500);
+    } catch(e) {
+        status.textContent = 'Error: ' + e;
+    }
+}
+</script>
+{% endblock %}

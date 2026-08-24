@@ -7,4 +7,10 @@ from job_bot.discovery import accelerators  # noqa: F401
 from job_bot.discovery import fellowships  # noqa: F401
 from job_bot.discovery import hackathons  # noqa: F401
 from job_bot.discovery import african_jobs  # noqa: F401
+from job_bot.discovery import fuzu  # noqa: F401
+from job_bot.discovery import upwork  # noqa: F401
 from job_bot.discovery import twitter  # noqa: F401
+from job_bot.discovery import rwanda_jobs  # noqa: F401
+from job_bot.discovery import remote_jobs  # noqa: F401
+from job_bot.discovery import europe_jobs  # noqa: F401
+from job_bot.discovery import playwright_scrapers  # noqa: F401

@@ -1,23 +1,24 @@
-from job_bot.discovery.base import SearchCriteria
+﻿from job_bot.discovery.base import SearchCriteria
 from job_bot.discovery.registry import list_scrapers, get_scraper
 from job_bot.discovery.utils import is_expired, is_rwanda_eligible
 from job_bot.discovery.providers import ATS_PROVIDERS
-from job_bot.discovery.google_search import AGGREGATOR_DOMAINS
+from job_bot.discovery.aggregator_domains import AGGREGATOR_DOMAINS
 from job_bot.database.repository import Repository
+from job_bot.intelligence.web.client import WebClient
 from job_bot.utils.logging import get_logger
 
 logger = get_logger()
 
 
 class DiscoveryOrchestrator:
-    def __init__(self, repo: Repository, config: dict):
+    def __init__(self, repo: Repository, config: dict, web_services: dict | None = None):
         self.repo = repo
         self.config = config
+        self._web_client = WebClient(web_services or {})
 
     async def run_all(self) -> list:
         criteria = SearchCriteria(
             skills=self.config.get("skills", []),
-            keywords=self.config.get("grants_keywords", []),
         )
         sources_config = self.config.get("sources", {})
         all_ops = []
@@ -27,26 +28,22 @@ class DiscoveryOrchestrator:
                 continue
             try:
                 scraper = get_scraper(name)
-                if hasattr(scraper, "set_api_key"):
-                    scraper.set_api_key(self.config.get("serper_api_key", ""))
+                if hasattr(scraper, "set_web_client"):
+                    scraper.set_web_client(self._web_client)
                 if name == "company_pages":
                     scraper.set_companies(self.config.get("companies", []))
                 opps = await scraper.discover(criteria)
                 for opp in opps:
-                    # Safety-net: skip known aggregator domains in either URL or company name
                     opp_url = (opp.url or "").lower()
                     opp_company = (opp.company or "").lower()
                     if any(d in opp_url or d in opp_company for d in AGGREGATOR_DOMAINS):
                         continue
-                    # Skip opportunities where someone from Rwanda is unlikely eligible
                     if not is_rwanda_eligible(opp.title, opp.company, opp.description, "", opp.remote):
                         continue
                     norm = opp.title.lower().strip()[:100]
                     if norm in normalized_titles:
                         continue
                     normalized_titles.add(norm)
-                    # Safety-net: skip expired listings even if the scraper
-                    # forgot to filter them out.
                     if is_expired(opp.deadline):
                         continue
                     oid = self.repo.add_opportunity({
@@ -65,7 +62,7 @@ class DiscoveryOrchestrator:
             except Exception as e:
                 logger.error("scraper_failed", scraper=name, error=str(e))
 
-        # ATS providers — direct API access, no Serper needed
+        # ATS providers
         for provider in ATS_PROVIDERS:
             try:
                 opps = await provider.fetch_jobs()

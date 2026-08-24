@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Bot - {% block title %}Dashboard{% endblock %}</title>
+    <title>JobBot - {% block title %}Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="/static/chart.umd.min.js"></script>
 </head>
@@ -11,32 +11,19 @@
     <div class="layout">
         <nav class="sidebar">
             <div class="sidebar-header">
-                <h2>🤖 Job Bot</h2>
+                <h2>JobBot</h2>
             </div>
             <ul class="nav-links">
-                <li><a href="/" class="{{ 'active' if page == 'home' }}">📊 Dashboard</a></li>
-                <li>
-                    <a href="/opportunities" class="{{ 'active' if page == 'opportunities' }}">📋 Opportunities</a>
-                    {% if page == 'opportunities' %}
-                    <ul style="padding-left: 1.5rem; list-style: none; margin-top: 0.25rem;">
-                        <li><a href="/opportunities/job" style="font-size: 0.85rem;">💼 Jobs</a></li>
-                        <li><a href="/opportunities/startup" style="font-size: 0.85rem;">🚀 Startups</a></li>
-                        <li><a href="/opportunities/grant" style="font-size: 0.85rem;">🎯 Grants</a></li>
-                    </ul>
-                    {% endif %}
+                <li><a href="/" class="{{ 'active' if page == 'home' }}">Dashboard</a></li>
+                <li class="nav-group">
+                    <a href="/opportunities" class="{{ 'active' if page == 'opportunities' and category|default('job') in ('', 'job', 'all') }}">Jobs</a>
+                    <a href="/opportunities/startup" class="nav-sub {{ 'active' if category|default('') == 'startup' }}">Startups</a>
+                    <a href="/opportunities/grant" class="nav-sub {{ 'active' if category|default('') == 'grant' }}">Grants</a>
                 </li>
-                <li>
-                    <a href="/review" class="{{ 'active' if page == 'review' }}">⭐ Review Queue</a>
-                    {% if page == 'review' %}
-                    <ul style="padding-left: 1.5rem; list-style: none; margin-top: 0.25rem;">
-                        <li><a href="/review/job" style="font-size: 0.85rem;">💼 Jobs</a></li>
-                        <li><a href="/review/startup" style="font-size: 0.85rem;">🚀 Startups</a></li>
-                        <li><a href="/review/grant" style="font-size: 0.85rem;">🎯 Grants</a></li>
-                    </ul>
-                    {% endif %}
-                </li>
-                <li><a href="/applications" class="{{ 'active' if page == 'applications' }}">📨 Applications</a></li>
-                <li><a href="/settings" class="{{ 'active' if page == 'settings' }}">⚙️ Settings</a></li>
+                <li><a href="/review" class="{{ 'active' if page == 'review' }}">Review</a></li>
+                <li><a href="/applications" class="{{ 'active' if page == 'applications' }}">Applications</a></li>
+                <li><a href="/upwork" class="{{ 'active' if page == 'upwork' }}">Upwork</a></li>
+                <li><a href="/settings" class="{{ 'active' if page == 'settings' }}">Settings</a></li>
             </ul>
             <div class="sidebar-footer">
                 <small>v0.1.0</small>

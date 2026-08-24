@@ -1,4 +1,4 @@
-profile:
+﻿profile:
   name: ""
   email: ""
   phone: ""
@@ -22,16 +22,14 @@ discovery:
     google_search: true
     linkedin: true
     indeed: false
-    ycombinator: true
-    grants: true
-    accelerators: true
-    fellowships: true
-    hackathons: true
     african_jobs: true
+    fuzu: true
     twitter: false
+    company_pages: true
+    upwork: true
+    remoteafrica: true
   companies: []
-  serper_api_key: ""
-  grants_keywords: []
+
   sources_path: data/sources.yaml
 
 application:
@@ -39,6 +37,7 @@ application:
   max_applications_per_run: 5
   save_drafts: true
   headless: true
+  autonomous_apply: false
 
 notifications:
   whatsapp:
@@ -50,3 +49,8 @@ notifications:
 database:
   path: "data/job_bot.db"
   vector_path: "data/vectors"
+
+web_services:
+  firecrawl_api_key: ""
+  jina_api_key: ""
+  tinyfish_api_key: ""

@@ -1,5 +1,5 @@
 import pytest
-from job_bot.intelligence.liveness import LivenessChecker, DEAD_PHRASES
+from job_bot.intelligence.web.liveness import LivenessChecker, DEAD_PHRASES
 
 
 @pytest.mark.asyncio
@@ -27,7 +27,7 @@ async def test_url_not_ats_fallback_to_unknown():
 
 @pytest.mark.asyncio
 async def test_greenhouse_url_pattern_matches():
-    from job_bot.intelligence.liveness import LIVENESS_PROVIDERS
+    from job_bot.intelligence.web.liveness import LIVENESS_PROVIDERS
     import re
     for pattern, _ in LIVENESS_PROVIDERS:
         if "greenhouse" in str(type(_)).lower():

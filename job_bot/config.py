@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 from pathlib import Path
 
@@ -23,25 +23,20 @@ class LLMConfig(BaseModel):
 class DiscoveryConfig(BaseModel):
     interval_hours: int = 24
     sources: dict[str, bool] = Field(default_factory=lambda: {
-        "google_search": True, "linkedin": True, "indeed": False,
-        "ycombinator": True, "grants": True,
-        "accelerators": True, "fellowships": True,
-        "hackathons": True, "african_jobs": True, "twitter": False,
-        "company_pages": True,
+        "google_search": True, "linkedin": False, "indeed": False,
+        "african_jobs": True, "fuzu": True, "twitter": False,
+        "company_pages": True, "upwork": True,
+        "remoteafrica": True,
     })
     companies: list[str] = Field(default_factory=list)
-    serper_api_key: str = ""
-    grants_keywords: list[str] = Field(default_factory=list)
+
     sources_path: str = "data/sources.yaml"
 
     def __init__(self, **data):
-        # Ensure all known source keys exist by merging YAML data with defaults
         defaults = {
-            "google_search": True, "linkedin": True, "indeed": False,
-            "ycombinator": True, "grants": True,
-            "accelerators": True, "fellowships": True,
-            "hackathons": True, "african_jobs": True, "twitter": False,
-            "company_pages": True,
+            "google_search": True, "linkedin": False, "indeed": False,
+            "african_jobs": True, "fuzu": True, "twitter": False,
+            "company_pages": True, "upwork": True, "remoteafrica": True,
         }
         if "sources" in data and isinstance(data["sources"], dict):
             merged = defaults.copy()
@@ -55,6 +50,7 @@ class ApplicationConfig(BaseModel):
     max_applications_per_run: int = 5
     save_drafts: bool = True
     headless: bool = True
+    autonomous_apply: bool = False
 
 
 class ReviewConfig(BaseModel):
@@ -87,6 +83,22 @@ class ProfileConfig(BaseModel):
     skills: list[str] = Field(default_factory=list)
 
 
+class UpworkConfig(BaseModel):
+    enabled: bool = True
+    keywords: list[str] = Field(default_factory=lambda: ["Python", "AI", "Data Science"])
+    max_jobs_per_run: int = 50
+    client_id: str = ""
+    client_secret: str = ""
+    refresh_token: str = ""
+    access_token: str = ""
+
+
+class WebServicesConfig(BaseModel):
+    firecrawl_api_key: str = ""
+    jina_api_key: str = ""
+    tinyfish_api_key: str = ""
+
+
 class Config(BaseModel):
     profile: ProfileConfig = Field(default_factory=ProfileConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
@@ -95,6 +107,8 @@ class Config(BaseModel):
     review: ReviewConfig = Field(default_factory=ReviewConfig)
     notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    upwork: UpworkConfig = Field(default_factory=UpworkConfig)
+    web_services: WebServicesConfig = Field(default_factory=WebServicesConfig)
 
 
 def load_config(config_path: str | None = None) -> Config:
@@ -119,10 +133,16 @@ def load_config(config_path: str | None = None) -> Config:
 
 def _inject_env_vars(data: dict) -> dict:
     mapping = {
-        ("discovery", "serper_api_key"): "SERPER_API_KEY",
         ("notifications", "whatsapp", "phone_number_id"): "WHATSAPP_PHONE_NUMBER_ID",
         ("notifications", "whatsapp", "token"): "WHATSAPP_TOKEN",
         ("notifications", "whatsapp", "recipient"): "WHATSAPP_RECIPIENT",
+        ("upwork", "client_id"): "UPWORK_CLIENT_ID",
+        ("upwork", "client_secret"): "UPWORK_CLIENT_SECRET",
+        ("upwork", "refresh_token"): "UPWORK_REFRESH_TOKEN",
+        ("upwork", "access_token"): "UPWORK_ACCESS_TOKEN",
+        ("web_services", "firecrawl_api_key"): "FIRECRAWL_API_KEY",
+        ("web_services", "jina_api_key"): "JINA_API_KEY",
+        ("web_services", "tinyfish_api_key"): "TINYFISH_API_KEY",
     }
     for keys, env_var in mapping.items():
         val = os.getenv(env_var)

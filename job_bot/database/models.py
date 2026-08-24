@@ -24,6 +24,8 @@ class Opportunity(Base):
     score = Column(Float, nullable=True)
     liveness_checked_at = Column(DateTime, nullable=True)
     liveness_status = Column(String(20), nullable=True)
+    client_company = Column(String(300), default="")
+    client_website = Column(String(2000), default="")
     score_cv_match = Column(Float, nullable=True)
     score_compensation = Column(Float, nullable=True)
     score_culture = Column(Float, nullable=True)

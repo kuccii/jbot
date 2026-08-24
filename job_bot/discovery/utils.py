@@ -137,6 +137,13 @@ _LOCATIONS_EXCLUDING_RWANDA = [
     "philippines", "thailand", "vietnam", "israel", "uae",
     "united arab emirates", "qatar", "saudi arabia",
     "brazil", "argentina", "chile", "colombia", "mexico",
+    # Extended European / non-Africa coverage
+    "luxembourg", "liechtenstein", "monaco", "andorra",
+    "czech republic", "czechia", "slovakia", "slovenia",
+    "hungary", "romania", "bulgaria", "croatia", "serbia",
+    "greece", "turkey", "ukraine", "russia",
+    "south america", "central america",
+    "the netherlands", "americas",
 ]
 
 _VISA_BLOCK_KEYWORDS = [
@@ -201,17 +208,32 @@ _CITIES_EXCLUDING_RWANDA = [
     "mexico city", "sao paulo", "buenos aires",
     "washington dc", "washington d.c.",
     "nyc", "sf", "la", "manhattan", "brooklyn", "bay area",
+    # Indian tech hub cities
+    "bengaluru", "bangalore", "bangalore", "gurugram", "gurgaon", "noida",
+    "hyderabad", "pune", "mumbai", "chennai", "kolkata", "ahmedabad",
+    "kochi", "chandigarh", "indore",
+    # European cities not already listed
+    "bucharest", "warsaw", "prague", "budapest", "vienna", "lisbon",
+    "bratislava", "ljubljana", "zagreb", "belgrade", "sofia", "athens",
+    "istanbul", "luxembourg", "monaco", "vaduz",
+    # Other common global office cities
+    "cdmx", "sfo", "chi", "sea", "atl", "bos", "mia", "dal", "den", "phx",
+    "houston", "san jose", "oakland", "sacramento",
+    "bengaluru", "bangaluru",  # handle common misspellings
 ]
 
 _REGIONS_EXCLUDING_RWANDA = [
     "dach", "latam", "apac", "nordic", "iberia", "benelux",
     "amer", "cee", "aunz", "anz", "uki", "uk&i", "uk & ireland",
     "united kingdom & ireland",
+    "north america", "south america",
+    "europe", "western europe", "eastern europe", "southern europe",
+    "emea", "americas",
 ]
 
 _POSITIVE_TITLE_MARKERS = [
     "remote", "anywhere", "global", "worldwide", "africa",
-    "east africa", "emea",
+    "east africa",
 ]
 
 def _extract_title_location(title: str) -> str | None:
@@ -372,11 +394,56 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
     # Fast positive — explicitly global/anywhere/africa
     if any(kw in desc_lower for kw in ["anywhere in the world", "work from anywhere", "open to applicants from anywhere"]):
         return True
-    if any(kw in loc_lower for kw in _POSITIVE_LOCATIONS):
-        return True
     if remote_lower in ("worldwide", "global", "anywhere"):
         return True
-    # Check title for positive location markers
+
+    # Fast negative — location-based exclusion (more reliable than title heuristics)
+    if loc_lower:
+        # Split on " or ", " and ", "/", ";", ",", " - ", "-", "(", ")"
+        raw = loc_lower.replace(" or ", ",").replace(" and ", ",")
+        raw = raw.replace("(", "").replace(")", "").replace(";", ",").replace("/", ",").replace(" - ", ",").replace("-", ",")
+        raw_parts = raw.split(",")
+        for part in raw_parts:
+            part = part.strip()
+            if not part:
+                continue
+            if part in ("remote", "fully remote", "100% remote", "n/a", "na", "not specified"):
+                continue
+            # Check full country/region names as substrings
+            if any(country in part for country in _LOCATIONS_EXCLUDING_RWANDA if len(country) > 2):
+                return False
+            # Check US state abbreviations (exact match on stripped word)
+            if part.upper() in ("NY", "CA", "TX", "IL", "FL", "WA", "MA", "OR", "CO", "DC", "PA", "VA", "NC", "SC", "GA", "OH", "MI", "MN", "WI", "MO", "TN", "AZ", "NV", "MD", "NJ", "CT", "RI", "NH", "VT", "ME", "ND", "SD", "NE", "KS", "OK", "LA", "AR", "IA", "MS", "AL", "KY", "WV", "ID", "MT", "WY", "UT", "NM", "AK", "HI"):
+                return False
+            # Check US state full names as substrings (e.g., "California" in "Remote - California")
+            if any(state in part for state in ["alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+                    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho", "illinois", "indiana",
+                    "iowa", "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan",
+                    "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada", "new hampshire",
+                    "new jersey", "new mexico", "new york", "north carolina", "north dakota", "ohio", "oklahoma",
+                    "oregon", "pennsylvania", "rhode island", "south carolina", "south dakota", "tennessee",
+                    "texas", "utah", "vermont", "virginia", "washington", "west virginia", "wisconsin", "wyoming"]):
+                return False
+            # Check country abbreviations (e.g. "IN" for India, "US" for United States)
+            if part.upper() in ("US", "USA", "UK", "IN", "DE", "FR", "NL", "IE", "SG", "AU", "CA", "JP", "CN", "BR", "MX", "AE", "CH", "SE", "NO", "DK", "FI", "BE", "AT", "PL", "PT", "IT", "ES", "IL", "KR", "TW", "HK", "NZ"):
+                return False
+            # Check known excluded cities as substrings (handles "new york privy hq", "south san francisco")
+            if any(city in part for city in _CITIES_EXCLUDING_RWANDA if len(city) >= 3):
+                return False
+            # Short city codes (la, sf, nyc) on word boundaries
+            for city in ["nyc", "sf", "la", "cdmx", "sfo", "chi", "dub", "sea", "atl", "bos", "mia", "dal", "den", "phx"]:
+                if re.search(r"(?:^|[\s/])" + re.escape(city) + r"(?:$|[\s/,])", part):
+                    return False
+            # Country codes as words inside longer strings (e.g., "Remote in the US", "US Remote National")
+            for code in ["us", "usa", "uk", "canada"]:
+                if re.search(r"(?:^|[\s/])" + re.escape(code) + r"(?:$|[\s/,])", part):
+                    return False
+
+    # Fallback positive — location field says africa/global/anywhere
+    if any(kw in loc_lower for kw in _POSITIVE_LOCATIONS):
+        return True
+
+    # Check title for positive location markers (after location check — location field is authoritative)
     for marker in _POSITIVE_TITLE_MARKERS:
         if marker in title_lower:
             # Only if not also location-locked (e.g., "Remote - US" should still fail)
@@ -386,20 +453,6 @@ def is_rwanda_eligible(title: str, company: str, description: str | None, locati
     # Fast negative — title-based location exclusion
     if _title_location_is_excluded(title_lower):
         return False
-
-    # Fast negative — location-based exclusion (if location field is populated)
-    if loc_lower:
-        parts = loc_lower.replace("(", "").replace(")", "").replace(";", ",").replace("/", ",").split(",")
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-            if part in ("remote", "fully remote", "100% remote"):
-                continue
-            if any(country in part for country in _LOCATIONS_EXCLUDING_RWANDA):
-                return False
-            if any(state in part for state in ("ny", "ca", "tx", "il", "fl", "wa", "ma", "or", "co", "dc")):
-                return False
 
     # Fast negative — visa/authorization blocks (skip if followed by positive locations)
     if "must be located in" in desc_lower:

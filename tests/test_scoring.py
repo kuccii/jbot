@@ -1,5 +1,5 @@
 import pytest
-from job_bot.intelligence.matcher import Matcher, FALLBACK_SCORES
+from job_bot.intelligence.analysis.matcher import Matcher, FALLBACK_SCORES
 
 
 class MockProvider:

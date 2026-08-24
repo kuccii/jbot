@@ -24,6 +24,12 @@ dependencies = [
     "crawl4ai>=0.9.0",
 ]
 
+[project.optional-dependencies]
+webservices = [
+    "firecrawl-py>=1.0",
+    "tinyfish>=0.1",
+]
+
 [project.scripts]
 job-bot = "job_bot.cli.commands:app"
 

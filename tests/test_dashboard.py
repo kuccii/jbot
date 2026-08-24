@@ -10,8 +10,8 @@ def _override_db(monkeypatch, tmp_path):
     db_path = str(tmp_path / "test.db")
     db_url = init_db(db_path)
     repo = Repository(db_url)
-    import job_bot.dashboard.server as server
-    monkeypatch.setattr(server, "get_repo", lambda: repo)
+    import job_bot.dashboard.routes._deps as deps
+    monkeypatch.setattr(deps, "get_repo", lambda: repo)
 
 
 class TestDashboard:

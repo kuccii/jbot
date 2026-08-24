@@ -21,8 +21,10 @@ Return ONLY valid JSON with these keys (no markdown, no explanation):
   "culture": <0-100 how well does the company culture fit>,
   "red_flags": <0-100 how many red flags (inverted: 0=many flags, 100=clean)>,
   "legitimacy": <0-100 how legitimate/verifiable is this opportunity>,
-  "global": <0-100 how accessible is this for global applicants>,
-  "prose": "<2-3 sentence summary of why or why not>"
+  "global": <0-100 how accessible is this for global applicants. If location is
+            a specific city/country that is hard to get a work visa for (US, UK, EU, Canada, etc.),
+            score this LOW. If fully remote with no location restriction, score HIGH.>,
+  "prose": "<2-3 sentence summary of why or why not, noting any location restrictions>"
 }}
 
 PROFILE:

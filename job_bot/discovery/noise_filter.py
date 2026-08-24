@@ -9,46 +9,32 @@ import re
 import sqlite3
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
-AGGREGATOR_DOMAINS = [
-    "remotive.com", "remoteok.com", "weworkremotely.com",
-    "remotejobsafrica.com", "remotecareer.africa", "remoteli.com",
-    "upwork.com", "toptal.com", "freelancer.com", "fiverr.com",
-    "workana.com", "peopleperhour.com", "progigfinder.com",
-    "indeed.com", "ziprecruiter.com", "monster.com", "simplyhired.com",
-    "glassdoor.com", "careerbuilder.com", "flexjobs.com",
-    "dynamitejobs.com", "remoterocketship.com", "remote4africa.com",
-    "crossover.com", "seganrecruitment.com", "careerhound.io", "fuzu.com",
-    "globalhire360.com", "jobgether.com",
-    "tunga.io", "gebeya.com",
-    "arc.dev", "mctaba.com",
-    "youtube.com", "youtu.be", "substack.com",
-    "wellfound.com",
-    "himalayas.app", "rubyonremote.com",
-    "reddit.com", "remote.co", "nodesk.co",
-    "remoteafrica.io",
-    "jobviewtrack.com",
-    "linkedin.com",
-    "workingnomads.com", "4dayweek.io",
-    "instagram.com", "facebook.com", "tiktok.com",
-    "grantwriting.ca", "instrumentl.com",
-    "researchbunny.com", "peopleinai.com",
-    # Aggregator / meta-roundup sites that don't list actual jobs
-    "opportunitiesforafricans.com", "opportunitydesk.org",
-    "invest-for-jobs.com", "menterprise.africa",
-    "fundsforngos.org",
-    "anzishaprize.org", "mastercardfoundation.org",
-]
+from job_bot.discovery.aggregator_domains import AGGREGATOR_DOMAINS
 
 TWITTER_PROFILE_PATTERNS = [
-    r"^/@?\w+",           # "/username" or "/@username"
-    r"/posts/\s*$",        # profile /posts page
-    r"/with_replies\s*$",  # profile /with_replies page
-    r"/media\s*$",         # profile /media page
-    r"/likes\s*$",         # profile /likes page
+    r"^/@?\w+",
+    r"/posts/\s*$",
+    r"/with_replies\s*$",
+    r"/media\s*$",
+    r"/likes\s*$",
 ]
 
 NOISE_SOURCES = {"twitter"}
+
+MONTH_MAP = {
+    "january": 1, "february": 2, "march": 3, "april": 4,
+    "may": 5, "june": 6, "july": 7, "august": 8,
+    "september": 9, "october": 10, "november": 12, "december": 12,
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "jun": 6, "jul": 7,
+    "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+}
+
+DEADLINE_PATTERNS = [
+    re.compile(r"(?:deadline|due\s*date|closes|apply\s*by)\s*:?\s*(\d{1,2})(?:st|nd|rd|th)?\s*(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*,?\s*(\d{4})", re.IGNORECASE),
+    re.compile(r"(?:deadline|due\s*date|closes|apply\s*by)\s*:?\s*(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*(\d{4})", re.IGNORECASE),
+]
 
 
 def _url_matches_domain(url: str, domains: list[str]) -> bool:
@@ -57,14 +43,10 @@ def _url_matches_domain(url: str, domains: list[str]) -> bool:
 
 
 def _is_twitter_profile(url: str) -> bool:
-    """Check if URL is a Twitter/X profile page, not a tweet."""
     path = url.split("?")[0].rstrip("/")
-    # Profile pages: /username (single segment after twitter.com/)
-    # Tweet URLs: /username/status/12345
     for pat in TWITTER_PROFILE_PATTERNS:
         if re.search(pat, path):
             return True
-    # Check if it's a profile (single path segment after domain)
     url_lower = url.lower()
     if not any(d in url_lower for d in ("twitter.com", "x.com", "t.co")):
         return False
@@ -78,7 +60,6 @@ def _is_twitter_profile(url: str) -> bool:
 
 
 def _google_search_aggregator_only(company: Optional[str], url: str) -> bool:
-    """True if google_search entry has no real company (aggregator scrape)."""
     if not company or not company.strip():
         return True
     company_lower = company.lower().strip()
@@ -86,28 +67,60 @@ def _google_search_aggregator_only(company: Optional[str], url: str) -> bool:
         return False
     if len(company_lower) < 2:
         return True
-    # If company name itself is an aggregator
     if any(d in company_lower for d in ("linkedin", "twitter", "reddit", "wellfound")):
         return True
     return _url_matches_domain(url, AGGREGATOR_DOMAINS)
 
 
-def check_entry(source: str, url: str, company: Optional[str], title: str) -> Optional[str]:
+def _extract_deadline(text: str) -> Optional[str]:
+    """Try to extract a deadline date from text. Returns 'YYYY-MM-DD' or None."""
+    if not text:
+        return None
+    for pat in DEADLINE_PATTERNS:
+        m = pat.search(text)
+        if m:
+            groups = m.groups()
+            if groups[0].isalpha():
+                month_str, day_str, year_str = groups
+            else:
+                day_str, month_str, year_str = groups
+            month = MONTH_MAP.get(month_str.lower()[:3])
+            if month:
+                day = int(re.sub(r"[^\d]", "", day_str))
+                year = int(re.sub(r"[^\d]", "", year_str))
+                if 1 <= day <= 31 and 2020 <= year <= 2030:
+                    return f"{year}-{month:02d}-{day:02d}"
+    return None
+
+
+def _is_expired_by_deadline(deadline_str: Optional[str], description: str) -> bool:
+    """Check if a deadline date found in description has already passed."""
+    d = _extract_deadline(description)
+    if not d:
+        return False
+    try:
+        dt = datetime.strptime(d, "%Y-%m-%d")
+        return dt < datetime.now()
+    except ValueError:
+        return False
+
+
+def check_entry(source: str, url: str, company: Optional[str], title: str, description: str = "") -> Optional[str]:
     """Returns reason string if entry is noise, None if clean."""
     url = url or ""
     company = company or ""
     title = title or ""
+    description = description or ""
 
     if source in NOISE_SOURCES:
         return f"source '{source}' is pure noise"
 
     if _url_matches_domain(url, AGGREGATOR_DOMAINS):
-        return f"URL contains aggregator domain"
+        return "URL contains aggregator domain"
 
-    # Check if company name matches aggregator domain (for company_pages)
     company_lower = company.lower().strip()
     if _url_matches_domain(company_lower, AGGREGATOR_DOMAINS):
-        return f"company matches aggregator domain"
+        return "company matches aggregator domain"
 
     if _is_twitter_profile(url):
         return "twitter profile page (not a job tweet)"
@@ -118,19 +131,21 @@ def check_entry(source: str, url: str, company: Optional[str], title: str) -> Op
     if url.lower().endswith(".pdf"):
         return "PDF file (not an opportunity listing)"
 
+    current_year = datetime.now().year
+    combined = title + " " + company
+    for y in range(2010, current_year - 1):
+        s = str(y)
+        if s in combined:
+            return f"expired ({s})"
+
+    if _is_expired_by_deadline(None, description):
+        return "deadline has passed"
+
     return None
 
 
 def purge_noise(db_path: str, dry_run: bool = True) -> dict:
-    """Scan all opportunities and purge/flag noise entries.
-
-    Args:
-        db_path: Path to SQLite database.
-        dry_run: If True, only report without modifying.
-
-    Returns:
-        dict with summary stats.
-    """
+    """Scan all opportunities and purge/flag noise entries."""
     if not Path(db_path).exists():
         return {"error": f"Database not found: {db_path}"}
 
@@ -139,7 +154,7 @@ def purge_noise(db_path: str, dry_run: bool = True) -> dict:
     cur = conn.cursor()
 
     rows = cur.execute(
-        "SELECT id, source, url, company, title, status FROM opportunities"
+        "SELECT id, source, url, company, title, description, status FROM opportunities"
     ).fetchall()
 
     stats = {
@@ -160,6 +175,7 @@ def purge_noise(db_path: str, dry_run: bool = True) -> dict:
             url=row["url"] or "",
             company=row["company"],
             title=row["title"],
+            description=row["description"] or "",
         )
         if reason:
             stats["removed"] += 1

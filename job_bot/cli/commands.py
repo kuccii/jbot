@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import typer
 from pathlib import Path
 
@@ -23,7 +23,7 @@ def discover():
     """Run opportunity discovery now."""
     cfg, repo = _init()
     from job_bot.discovery.orchestrator import DiscoveryOrchestrator
-    orch = DiscoveryOrchestrator(repo, cfg.discovery.model_dump())
+    orch = DiscoveryOrchestrator(repo, cfg.discovery.model_dump(), web_services=cfg.web_services.model_dump())
     results = asyncio.run(orch.run_all())
     typer.echo(f"Discovery complete. Found {len(results)} new opportunities.")
 
@@ -34,7 +34,7 @@ def schedule():
     cfg, repo = _init()
     from job_bot.discovery.orchestrator import DiscoveryOrchestrator
     from job_bot.discovery.scheduler import start_scheduler
-    orch = DiscoveryOrchestrator(repo, cfg.discovery.model_dump())
+    orch = DiscoveryOrchestrator(repo, cfg.discovery.model_dump(), web_services=cfg.web_services.model_dump())
     start_scheduler(orch, cfg.discovery.interval_hours)
     typer.echo(f"Scheduler started (every {cfg.discovery.interval_hours}h). Press Ctrl+C to stop.")
 
@@ -44,7 +44,6 @@ def review():
     """Review pending matches with AI scores and drafts."""
     cfg, repo = _init()
     from job_bot.pipeline import Pipeline
-    import asyncio
     pipeline = Pipeline(cfg, repo)
     results = asyncio.run(pipeline.review())
     if results:
@@ -66,10 +65,19 @@ def apply(opportunity_id: int = typer.Argument(..., help="Opportunity ID")):
         return
     opp = matched[0]
     from job_bot.pipeline import Pipeline
-    import asyncio
     pipeline = Pipeline(cfg, repo)
     result = asyncio.run(pipeline.apply(opp.url))
     typer.echo(f"Result: {result}")
+
+
+@app.command()
+def run():
+    """Run full cycle: discover -> review -> apply."""
+    cfg, repo = _init()
+    from job_bot.pipeline import Pipeline
+    pipeline = Pipeline(cfg, repo)
+    result = asyncio.run(pipeline.run_full_cycle())
+    typer.echo(f"Done. Discovered: {result['discovered']}, Reviewed: {result['reviews']}, Applied: {result['applied']}")
 
 
 @app.command()
@@ -80,7 +88,6 @@ def notify(message: str = typer.Argument("Test message from Job Bot", help="Mess
         typer.echo("WhatsApp is not enabled in config.")
         return
     from job_bot.notifications.whatsapp import WhatsAppNotifier
-    import asyncio
     notifier = WhatsAppNotifier(
         cfg.notifications.whatsapp.phone_number_id,
         cfg.notifications.whatsapp.token,
@@ -98,6 +105,7 @@ def status():
     typer.echo(f"New: {stats['new']}")
     typer.echo(f"Applied: {stats['applied']}")
     typer.echo(f"Rejected: {stats.get('rejected', 0)}")
+    typer.echo(f"Dead: {stats.get('dead', 0)}")
 
 
 @app.command()
@@ -146,3 +154,57 @@ def profile():
         typer.echo(f"CV: {len(p.cv_text)} chars loaded")
     else:
         typer.echo("No profile configured. Use 'job-bot import-cv <path>' to add your CV.")
+
+
+@app.command()
+def purge(
+    what: str = typer.Argument(..., help="What to purge: dead, old, source, unscored, duplicates, all"),
+    days: int = typer.Option(30, help="Days threshold for 'old' purge"),
+    source: str = typer.Option("", help="Source name for 'source' purge"),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
+):
+    """Purge opportunities from the database."""
+    cfg, repo = _init()
+
+    descriptions = {
+        "dead": "Remove all dead opportunities",
+        "old": f"Remove opportunities older than {days} days (not applied)",
+        "source": f"Remove all opportunities from source '{source}'",
+        "unscored": "Remove all unscored new opportunities",
+        "duplicates": "Remove duplicate opportunities (keep newest)",
+        "all": "Remove ALL opportunities (nuclear option)",
+    }
+
+    if what not in descriptions:
+        typer.echo(f"Unknown purge type: {what}")
+        typer.echo(f"Available: {', '.join(descriptions.keys())}")
+        return
+
+    desc = descriptions[what]
+    typer.echo(f"Purge: {desc}")
+
+    if not force:
+        if not typer.confirm("Are you sure?"):
+            typer.echo("Cancelled.")
+            return
+
+    before = repo.get_stats()["total"]
+
+    if what == "dead":
+        removed = repo.purge_dead()
+    elif what == "old":
+        removed = repo.purge_old(days)
+    elif what == "source":
+        if not source:
+            typer.echo("Error: --source is required for 'source' purge")
+            return
+        removed = repo.purge_by_source(source)
+    elif what == "unscored":
+        removed = repo.purge_unscored()
+    elif what == "duplicates":
+        removed = repo.purge_duplicates()
+    elif what == "all":
+        removed = repo.purge_all()
+
+    after = repo.get_stats()["total"]
+    typer.echo(f"Purged {removed} opportunities. ({before} -> {after})")

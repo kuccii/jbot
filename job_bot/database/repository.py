@@ -1,7 +1,7 @@
-from pathlib import Path
+﻿from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
 from job_bot.database.models import Base, Opportunity, Application, AuditLog
@@ -12,25 +12,24 @@ def init_db(db_path: str) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}")
     Base.metadata.create_all(engine)
+    migrate_schema(db_path)
     return f"sqlite:///{db_path}"
 
 
 def migrate_schema(db_path: str):
-    """Add new columns introduced in model changes. Safe to run multiple times."""
-    from sqlalchemy import text
     engine = create_engine(f"sqlite:///{db_path}")
     new_cols = [
         "liveness_checked_at",
         "liveness_status",
         "score_cv_match", "score_compensation", "score_culture",
         "score_red_flags", "score_legitimacy", "score_global",
-        "score_prose",
+        "score_prose", "client_company", "client_website",
     ]
     with engine.connect() as conn:
         existing = {row[1] for row in conn.execute(text("PRAGMA table_info('opportunities')"))}
         for col in new_cols:
             if col not in existing:
-                if col == "score_prose":
+                if col in ("score_prose", "client_company", "client_website"):
                     conn.execute(text(f"ALTER TABLE opportunities ADD COLUMN {col} TEXT"))
                 else:
                     conn.execute(text(f"ALTER TABLE opportunities ADD COLUMN {col} FLOAT"))
@@ -183,3 +182,66 @@ class Repository:
                     Opportunity.category == cat
                 ).count()
             return result
+
+    # -- Purge methods --
+
+    def purge_dead(self) -> int:
+        with Session(self.engine) as session:
+            count = session.query(Opportunity).filter_by(status="dead").delete()
+            session.commit()
+            return count
+
+    def purge_old(self, days: int = 30) -> int:
+        from datetime import datetime, timedelta
+        with Session(self.engine) as session:
+            cutoff = datetime.utcnow() - timedelta(days=days)
+            count = session.query(Opportunity).filter(
+                Opportunity.created_at < cutoff,
+                Opportunity.status != "applied",
+            ).delete()
+            session.commit()
+            return count
+
+    def purge_by_source(self, source: str) -> int:
+        with Session(self.engine) as session:
+            count = session.query(Opportunity).filter_by(source=source).delete()
+            session.commit()
+            return count
+
+    def purge_unscored(self) -> int:
+        with Session(self.engine) as session:
+            count = session.query(Opportunity).filter(
+                Opportunity.score.is_(None),
+                Opportunity.status == "new",
+            ).delete()
+            session.commit()
+            return count
+
+    def purge_all(self) -> int:
+        with Session(self.engine) as session:
+            count = session.query(Opportunity).delete()
+            session.commit()
+            return count
+
+    def purge_duplicates(self) -> int:
+        """Remove duplicate opportunities (keep the newest by URL)."""
+        with Session(self.engine) as session:
+            # Find URLs with duplicates
+            dupe_urls = [
+                row[0] for row in session.query(Opportunity.url)
+                .group_by(Opportunity.url)
+                .having(text("COUNT(*) > 1"))
+                .all()
+            ]
+            if not dupe_urls:
+                return 0
+            count = 0
+            for url in dupe_urls:
+                # Get all records for this URL, ordered by id desc
+                records = session.query(Opportunity).filter_by(url=url).order_by(Opportunity.id.desc()).all()
+                # Keep the first (newest), delete the rest
+                for record in records[1:]:
+                    session.delete(record)
+                    count += 1
+            session.commit()
+            return count

@@ -1,11 +1,11 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Settings{% endblock %}
 {% block content %}
-<div class="page-title">⚙️ All Settings</div>
+<div class="page-title">Settings</div>
 
 {% if saved %}
 <div class="card" style="background: #e8f5e9; border: 1px solid #2e7d32; margin-bottom: 1rem;">
-    <p style="color: #2e7d32;">✅ Settings saved successfully!</p>
+    <p style="color: #2e7d32;">Settings saved successfully!</p>
 </div>
 {% endif %}
 
@@ -13,10 +13,20 @@
     <p style="color: #e65100;" id="validation-text"></p>
 </div>
 
+<div class="settings-tabs">
+    <button class="settings-tab active" onclick="showTab('profile')">Profile</button>
+    <button class="settings-tab" onclick="showTab('llm')">LLM Provider</button>
+    <button class="settings-tab" onclick="showTab('discovery')">Discovery</button>
+    <button class="settings-tab" onclick="showTab('application')">Application</button>
+    <button class="settings-tab" onclick="showTab('notifications')">Notifications</button>
+    <button class="settings-tab" onclick="showTab('webservices')">Web Services</button>
+</div>
+
 <form method="post" action="/settings" onsubmit="return validateForm()">
 
+<div class="settings-section" id="tab-profile">
 <div class="card">
-    <div class="card-header">👤 Profile</div>
+    <div class="card-header">Profile</div>
     <div class="form-group">
         <label>Name</label>
         <input type="text" name="name" value="{{ config.profile.name }}" required>
@@ -34,9 +44,11 @@
         <input type="text" name="skills" value="{{ config.profile.skills|join(', ') }}">
     </div>
 </div>
+</div>
 
+<div class="settings-section" id="tab-llm" style="display:none;">
 <div class="card">
-    <div class="card-header">🤖 LLM Provider</div>
+    <div class="card-header">LLM Provider</div>
     <div class="form-group">
         <label>Provider</label>
         <select name="llm_provider" id="llm-provider">
@@ -48,7 +60,19 @@
     </div>
     <div class="form-group">
         <label>Model</label>
-        <input type="text" name="llm_model" value="{{ config.llm.model }}" placeholder="llama3.1:8b / gemini-1.5-flash / meta/llama3-70b-instruct">
+        <select name="llm_model" id="llm-model" data-current="{{ config.llm.model }}">
+            <option value="deepseek-v4-flash-free" data-provider="opencode">deepseek-v4-flash-free</option>
+            <option value="deepseek-v4-free" data-provider="opencode">deepseek-v4-free</option>
+            <option value="deepseek-v3-free" data-provider="opencode">deepseek-v3-free</option>
+            <option value="gemini-2.0-flash" data-provider="gemini">gemini-2.0-flash</option>
+            <option value="gemini-1.5-flash" data-provider="gemini">gemini-1.5-flash</option>
+            <option value="gemini-2.5-flash" data-provider="gemini">gemini-2.5-flash</option>
+            <option value="meta/llama-3.3-70b-instruct" data-provider="nim">meta/llama-3.3-70b-instruct</option>
+            <option value="meta/llama-3.1-70b-instruct" data-provider="nim">meta/llama-3.1-70b-instruct</option>
+            <option value="mistralai/mistral-large" data-provider="nim">mistralai/mistral-large</option>
+            <option value="" data-provider="custom">Custom (type below)</option>
+        </select>
+        <input type="text" id="llm-model-custom" name="llm_model_custom" value="" placeholder="Or type any model name..." style="margin-top: 0.5rem; display: none;">
     </div>
     <div class="form-group">
         <label>Embedding Model</label>
@@ -64,82 +88,71 @@
     </div>
     <div class="form-group" id="gemini-key-group">
         <label>Gemini API Key</label>
-        <input type="password" name="gemini_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_gemini_key else 'Paste your Gemini API key' }}">
+        <input type="password" name="gemini_api_key" value="" placeholder="{{ '*** saved ***' if has_gemini_key else 'Paste your Gemini API key' }}">
     </div>
     <div class="form-group" id="nim-key-group">
         <label>NVIDIA Nim API Key</label>
-        <input type="password" name="nim_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_nim_key else 'Paste your NVIDIA Nim API key' }}">
+        <input type="password" name="nim_api_key" value="" placeholder="{{ '*** saved ***' if has_nim_key else 'Paste your NVIDIA Nim API key' }}">
     </div>
     <div class="form-group" id="opencode-key-group">
         <label>OpenCode Zen API Key</label>
-        <input type="password" name="opencode_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_opencode_key else 'Paste your OpenCode Zen API key' }}">
+        <input type="password" name="opencode_api_key" value="" placeholder="{{ '*** saved ***' if has_opencode_key else 'Paste your OpenCode Zen API key' }}">
     </div>
     <div class="form-group" id="opencode-url-group">
         <label>OpenCode Base URL</label>
-        <input type="text" name="opencode_base_url" value="{{ config.llm.opencode_base_url }}" placeholder="https://opencode.ai/zen/v1">
+        <input type="text" name="opencode_base_url" value="{{ config.llm.opencode_base_url }}">
     </div>
 </div>
+</div>
 
+<div class="settings-section" id="tab-discovery" style="display:none;">
 <div class="card">
-    <div class="card-header">🌐 Discovery Sources</div>
+    <div class="card-header">Discovery Sources</div>
     <div class="form-group">
-        <label><input type="checkbox" name="source_google_search" {{ 'checked' if config.discovery.sources.google_search }}> Google Search (Serper API)</label>
+        <label><input type="checkbox" name="source_google_search" {{ 'checked' if config.discovery.sources.google_search }}> Google Search (Firecrawl)</label>
     </div>
     <div class="form-group">
         <label><input type="checkbox" name="source_linkedin" {{ 'checked' if config.discovery.sources.linkedin }}> LinkedIn</label>
     </div>
     <div class="form-group">
-        <label><input type="checkbox" name="source_grants" {{ 'checked' if config.discovery.sources.grants }}> Grants & Fellowships</label>
+        <label><input type="checkbox" name="source_twitter" {{ 'checked' if config.discovery.sources.twitter }}> Twitter/X</label>
     </div>
     <div class="form-group">
-        <label><input type="checkbox" name="source_ycombinator" {{ 'checked' if config.discovery.sources.ycombinator }}> Y Combinator Startups</label>
+        <label><input type="checkbox" name="source_african_jobs" {{ 'checked' if config.discovery.sources.african_jobs }}> African Job Boards</label>
     </div>
     <div class="form-group">
-        <label><input type="checkbox" name="source_accelerators" {{ 'checked' if config.discovery.sources.accelerators }}> African Accelerators (Flat6Labs, Seedstars, Founders Factory)</label>
+        <label><input type="checkbox" name="source_company_pages" {{ 'checked' if config.discovery.sources.company_pages }}> Company Career Pages</label>
     </div>
     <div class="form-group">
-        <label><input type="checkbox" name="source_fellowships" {{ 'checked' if config.discovery.sources.fellowships }}> African Fellowships (Mastercard Foundation, etc.)</label>
-    </div>
-    <div class="form-group">
-        <label><input type="checkbox" name="source_hackathons" {{ 'checked' if config.discovery.sources.hackathons }}> Hackathons & Dev Programs (MLH, Devpost)</label>
-    </div>
-    <div class="form-group">
-        <label><input type="checkbox" name="source_african_jobs" {{ 'checked' if config.discovery.sources.african_jobs }}> African Job Boards (BrighterMonday, MyJobMag, Jobberman)</label>
-    </div>
-    <div class="form-group">
-        <label><input type="checkbox" name="source_twitter" {{ 'checked' if config.discovery.sources.twitter }}> Twitter/X (develoPPP, GIZ, startup funding posts)</label>
-    </div>
-    <div class="form-group">
-        <label>Serper API Key <small style="color:#999;">(required for Google Search)</small></label>
-        <input type="password" name="serper_api_key" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_serper_key else 'Paste your Serper API key' }}">
-    </div>
-    <div class="form-group">
-        <label>Grant/Fellowship Keywords (comma-separated)</label>
-        <input type="text" name="grants_keywords" value="{{ config.discovery.grants_keywords|join(', ') }}" placeholder="AI research, tech fellowship, startup grant">
-    </div>
-    <div class="form-group">
-        <label>Target Websites (URLs or company names, one per line)</label>
-        <textarea name="companies" rows="3" placeholder="https://openai.com/careers&#10;https://ycombinator.com/companies&#10;deepmind">{{ config.discovery.companies|join('\n') }}</textarea>
+        <label>Target Websites (one per line)</label>
+        <textarea name="companies" rows="3" placeholder="https://openai.com/careers">{{ config.discovery.companies|join('\n') }}</textarea>
     </div>
     <div class="form-group">
         <label>Discovery Interval (hours)</label>
         <input type="number" name="interval_hours" value="{{ config.discovery.interval_hours }}" min="1" required>
     </div>
 </div>
+</div>
 
+<div class="settings-section" id="tab-application" style="display:none;">
 <div class="card">
-    <div class="card-header">📨 Application Settings</div>
+    <div class="card-header">Application Settings</div>
     <div class="form-group">
         <label><input type="checkbox" name="human_approval" {{ 'checked' if config.application.human_approval }}> Require human approval before submitting</label>
+    </div>
+    <div class="form-group">
+        <label><input type="checkbox" name="autonomous_apply" {{ 'checked' if config.application.autonomous_apply }}> Autonomous form filling (TinyFish/Firecrawl)</label>
     </div>
     <div class="form-group">
         <label>Max applications per run</label>
         <input type="number" name="max_applications_per_run" value="{{ config.application.max_applications_per_run }}" min="1" required>
     </div>
 </div>
+</div>
 
+<div class="settings-section" id="tab-notifications" style="display:none;">
 <div class="card">
-    <div class="card-header">💬 WhatsApp Notifications</div>
+    <div class="card-header">WhatsApp Notifications</div>
     <div class="form-group">
         <label><input type="checkbox" name="whatsapp_enabled" {{ 'checked' if config.notifications.whatsapp.enabled }}> Enable WhatsApp</label>
     </div>
@@ -149,52 +162,117 @@
     </div>
     <div class="form-group">
         <label>Token</label>
-        <input type="password" name="whatsapp_token" value="" placeholder="{{ '*** saved *** (enter new value to change)' if has_whatsapp_token else 'Paste your WhatsApp token' }}">
+        <input type="password" name="whatsapp_token" value="" placeholder="{{ '*** saved ***' if has_whatsapp_token else 'Paste your WhatsApp token' }}">
     </div>
     <div class="form-group">
-        <label>Recipient Phone (with country code)</label>
+        <label>Recipient Phone</label>
         <input type="text" name="whatsapp_recipient" value="{{ config.notifications.whatsapp.recipient }}" placeholder="+250...">
     </div>
 </div>
+</div>
 
-<div style="display: flex; gap: 1rem; align-items: center;">
-    <button type="submit" class="btn btn-primary" style="font-size: 1rem; padding: 0.8rem 2rem;">💾 Save All Settings</button>
-    <span style="color: #999; font-size: 0.85rem;">Settings are saved to config.yaml</span>
+<div class="settings-section" id="tab-webservices" style="display:none;">
+<div class="card">
+    <div class="card-header">Web Services</div>
+    <div class="form-group">
+        <label>Firecrawl API Key</label>
+        <input type="password" name="firecrawl_api_key" value="" placeholder="{{ '*** saved ***' if has_firecrawl_key else 'Paste your Firecrawl API key' }}">
+    </div>
+    <div class="form-group">
+        <label>Jina Reader API Key</label>
+        <input type="password" name="jina_api_key" value="" placeholder="{{ '*** saved ***' if has_jina_key else 'Paste your Jina API key' }}">
+    </div>
+    <div class="form-group">
+        <label>TinyFish API Key</label>
+        <input type="password" name="tinyfish_api_key" value="" placeholder="{{ '*** saved ***' if has_tinyfish_key else 'Paste your TinyFish API key' }}">
+    </div>
+</div>
+</div>
+
+<div style="margin-top: 1rem;">
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+    <span style="color: #999; font-size: 0.85rem; margin-left: 0.5rem;">Saved to config.yaml</span>
 </div>
 </form>
 
-<div class="card" style="margin-top: 2rem;">
-    <div class="card-header">📄 Current config.yaml</div>
-    <pre style="background: #f5f5f5; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; max-height: 300px;">{{ config_text }}</pre>
-</div>
-
 <script>
+function showTab(name) {
+    document.querySelectorAll('.settings-section').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = 'block';
+    event.target.classList.add('active');
+}
+
+var FREE_MODELS = [
+    {provider: 'opencode', value: 'deepseek-v4-flash-free'},
+    {provider: 'opencode', value: 'deepseek-v4-free'},
+    {provider: 'opencode', value: 'deepseek-v3-free'},
+    {provider: 'gemini', value: 'gemini-2.0-flash'},
+    {provider: 'gemini', value: 'gemini-1.5-flash'},
+    {provider: 'gemini', value: 'gemini-2.5-flash'},
+    {provider: 'nim', value: 'meta/llama-3.3-70b-instruct'},
+    {provider: 'nim', value: 'meta/llama-3.1-70b-instruct'},
+    {provider: 'nim', value: 'mistralai/mistral-large'},
+];
+
+function updateModelDropdown() {
+    var provider = document.getElementById('llm-provider').value;
+    var select = document.getElementById('llm-model');
+    var customInput = document.getElementById('llm-model-custom');
+    var currentVal = select.getAttribute('data-current') || '';
+    select.innerHTML = '';
+    var matched = FREE_MODELS.filter(function(m) { return m.provider === provider; });
+    matched.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.value; opt.textContent = m.value;
+        if (m.value === currentVal) opt.selected = true;
+        select.appendChild(opt);
+    });
+    var customOpt = document.createElement('option');
+    customOpt.value = ''; customOpt.textContent = 'Custom (type below)';
+    select.appendChild(customOpt);
+    var isInList = matched.some(function(m) { return m.value === currentVal; });
+    if (currentVal && !isInList) { select.value = ''; customInput.value = currentVal; customInput.style.display = 'block'; }
+    else { customInput.style.display = 'none'; }
+    select.disabled = customInput.style.display === 'block';
+    if (provider === 'ollama') { customInput.style.display = 'block'; customInput.placeholder = 'Enter any Ollama model name'; }
+    customInput.disabled = customInput.style.display !== 'block';
+}
+
 function toggleApiKeys() {
-    const provider = document.getElementById('llm-provider').value;
+    var provider = document.getElementById('llm-provider').value;
     document.getElementById('ollama-url-group').style.display = provider === 'ollama' ? 'block' : 'none';
     document.getElementById('gemini-key-group').style.display = provider === 'gemini' ? 'block' : 'none';
     document.getElementById('nim-key-group').style.display = provider === 'nim' ? 'block' : 'none';
     document.getElementById('opencode-key-group').style.display = provider === 'opencode' ? 'block' : 'none';
     document.getElementById('opencode-url-group').style.display = provider === 'opencode' ? 'block' : 'none';
+    updateModelDropdown();
 }
 document.getElementById('llm-provider').addEventListener('change', toggleApiKeys);
+
+document.querySelector('form').addEventListener('submit', function() {
+    var select = document.getElementById('llm-model');
+    var customInput = document.getElementById('llm-model-custom');
+    if (!select.value && customInput.value) {
+        select.name = ''; select.disabled = true;
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden'; hidden.name = 'llm_model'; hidden.value = customInput.value;
+        select.parentNode.appendChild(hidden);
+    }
+});
+
 toggleApiKeys();
 
 function validateForm() {
-    const errors = [];
-    const name = document.querySelector('[name="name"]').value.trim();
-    const email = document.querySelector('[name="email"]').value.trim();
-    const interval = document.querySelector('[name="interval_hours"]').value;
-    const maxApps = document.querySelector('[name="max_applications_per_run"]').value;
+    var errors = [];
+    var name = document.querySelector('[name="name"]').value.trim();
+    var email = document.querySelector('[name="email"]').value.trim();
     if (!name) errors.push('Name is required.');
     if (!email) errors.push('Email is required.');
     else if (!email.includes('@')) errors.push('Email is invalid.');
-    if (!interval || parseInt(interval) < 1) errors.push('Interval must be at least 1 hour.');
-    if (!maxApps || parseInt(maxApps) < 1) errors.push('Max applications must be at least 1.');
     if (errors.length) {
-        document.getElementById('validation-text').textContent = '⚠️ ' + errors.join(' ');
+        document.getElementById('validation-text').textContent = errors.join(' ');
         document.getElementById('validation-errors').style.display = 'block';
-        document.getElementById('validation-errors').scrollIntoView({ behavior: 'smooth' });
         return false;
     }
     return true;

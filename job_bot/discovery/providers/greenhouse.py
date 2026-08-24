@@ -1,9 +1,20 @@
+import html
 import re
 
 import httpx
+from bs4 import BeautifulSoup
 
 from job_bot.discovery.base import Opportunity
 from job_bot.discovery.providers.base import ATSProvider
+
+
+def _strip_html(raw: str) -> str:
+    """Convert HTML to plain text, handling common entities and tags."""
+    if not raw:
+        return ""
+    decoded = html.unescape(raw)
+    soup = BeautifulSoup(decoded, "html.parser")
+    return soup.get_text(separator=" ", strip=True)
 
 GREENHOUSE_BOARDS = {
     "openai": "openai",
@@ -40,13 +51,32 @@ class GreenhouseProvider(ATSProvider):
                         continue
                     data = resp.json()
                     for job in data.get("jobs", []):
+                        location = ""
+                        loc_obj = job.get("location") or {}
+                        if isinstance(loc_obj, dict):
+                            location = loc_obj.get("name", "") or ""
+                        elif isinstance(loc_obj, str):
+                            location = loc_obj
+                        if not location:
+                            offices = job.get("offices") or []
+                            parts = []
+                            for o in offices:
+                                loc = o.get("location") or ""
+                                if loc:
+                                    parts.append(loc)
+                            location = "; ".join(parts)
+                        remote_str = ""
+                        if job.get("remote"):
+                            remote_str = "remote"
                         results.append(Opportunity(
                             title=job.get("title", ""),
                             company=company,
                             url=job.get("absolute_url", ""),
-                            description=job.get("content", ""),
+                            description=_strip_html(job.get("content", "")),
                             source="greenhouse_ats",
                             category="job",
+                            location=location,
+                            remote=remote_str,
                         ))
                 except Exception:
                     continue

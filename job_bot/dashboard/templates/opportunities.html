@@ -1,14 +1,7 @@
-{% extends "base.html" %}
-{% block title %}Opportunities{% endblock %}
+﻿{% extends "base.html" %}
+{% block title %}{{ category_label }}{% endblock %}
 {% block content %}
-<div class="page-title">📋 Opportunities</div>
-
-<div class="tabs">
-    <a href="/opportunities" class="tab {{ 'active' if current_category == 'all' }}">All</a>
-    <a href="/opportunities/job" class="tab {{ 'active' if current_category == 'job' }}">💼 Jobs</a>
-    <a href="/opportunities/startup" class="tab {{ 'active' if current_category == 'startup' }}">🚀 Startups</a>
-    <a href="/opportunities/grant" class="tab {{ 'active' if current_category == 'grant' }}">🎯 Grants</a>
-</div>
+<div class="page-title">{{ category_label }}</div>
 
 <div class="filters">
     <select id="filter-source">
@@ -24,7 +17,7 @@
         <option value="rejected">Rejected</option>
     </select>
     <input type="text" id="filter-search" placeholder="Search by title...">
-    <button class="btn btn-sm btn-primary" onclick="location.reload()" title="Refresh">🔄</button>
+    <button class="btn btn-sm" onclick="location.reload()">Refresh</button>
     <span class="table-count" id="row-count"></span>
 </div>
 
@@ -36,20 +29,10 @@
             <tr>
                 <th>Title</th>
                 <th>Company</th>
+                <th>Category</th>
                 <th>Source</th>
-                {% if current_category == 'all' %}
-                <th>Type</th>
-                {% endif %}
-                {% if current_category == 'startup' %}
-                <th>Program</th>
-                <th>Stage</th>
-                <th>Amount</th>
-                {% elif current_category == 'grant' %}
-                <th>Amount</th>
-                {% elif current_category == 'job' %}
                 <th>Location</th>
                 <th>Remote</th>
-                {% endif %}
                 <th>Score</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -64,20 +47,10 @@
                 data-title="{{ opp.title or '' }}">
                 <td><div class="title-cell" title="{{ opp.title or '' }}">{{ opp.title[:80] if opp.title else '' }}</div></td>
                 <td><div class="company-cell" title="{{ opp.company or '' }}">{{ opp.company or '' }}</div></td>
+                <td><span class="source-tag">{{ opp.category or 'job' }}</span></td>
                 <td><span class="source-tag">{{ opp.source or '—' }}</span></td>
-                {% if current_category == 'all' %}
-                <td><span class="cat-tag cat-{{ opp.category or 'job' }}">{{ opp.category or 'job' }}</span></td>
-                {% endif %}
-                {% if current_category == 'startup' %}
-                <td>{{ opp.program or '—' }}</td>
-                <td>{{ opp.stage or '—' }}</td>
-                <td>{{ opp.amount or '—' }}</td>
-                {% elif current_category == 'grant' %}
-                <td>{{ opp.amount or '—' }}</td>
-                {% elif current_category == 'job' %}
                 <td>{{ opp.location or '—' }}</td>
                 <td>{{ opp.remote or '—' }}</td>
-                {% endif %}
                 <td class="{% if opp.score and opp.score >= 0.7 %}score-high{% elif opp.score and opp.score >= 0.4 %}score-med{% else %}score-low{% endif %}">
                     {{ "%.0f"|format(opp.score * 100) if opp.score else "—" }}
                 </td>
@@ -92,10 +65,7 @@
 </div>
 {% else %}
 <div class="card">
-    <p style="color: #999; text-align: center; padding: 2rem;">
-        No {{ current_category if current_category != 'all' else '' }} opportunities yet.
-        <a href="/" style="color: #4361ee;">Run Discovery</a> from the dashboard.
-    </p>
+    <p class="empty">No {{ category_label|lower }} yet. <a href="/">Run Discovery</a> to find opportunities.</p>
 </div>
 {% endif %}
 
@@ -103,7 +73,7 @@
     <div class="modal-content">
         <div style="display: flex; justify-content: space-between; align-items: start;">
             <h3 id="modal-title"></h3>
-            <button onclick="closeModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">×</button>
+            <button onclick="closeModal()" class="modal-close">&times;</button>
         </div>
         <div id="modal-body"></div>
     </div>
@@ -113,38 +83,26 @@
 function showDetail(id) {
     fetch('/api/opportunities/' + id).then(r => r.json()).then(opp => {
         document.getElementById('modal-title').textContent = opp.title;
-        let html = '<p><strong>Company:</strong> ' + escHtml(opp.company) + '</p>';
-        html += '<p><strong>Category:</strong> ' + escHtml(opp.category) + '</p>';
-        html += '<p><strong>Source:</strong> ' + escHtml(opp.source) + '</p>';
-        html += '<p><strong>Status:</strong> ' + escHtml(opp.status) + '</p>';
+        let html = '<p><strong>Company:</strong> ' + esc(opp.company) + '</p>';
+        html += '<p><strong>Category:</strong> ' + esc(opp.category || 'job') + '</p>';
+        if (opp.program) html += '<p><strong>Program:</strong> ' + esc(opp.program) + '</p>';
+        if (opp.stage) html += '<p><strong>Stage:</strong> ' + esc(opp.stage) + '</p>';
+        if (opp.amount) html += '<p><strong>Amount:</strong> ' + esc(opp.amount) + '</p>';
+        if (opp.deadline) html += '<p><strong>Deadline:</strong> ' + esc(opp.deadline) + '</p>';
+        html += '<p><strong>Source:</strong> ' + esc(opp.source) + '</p>';
+        html += '<p><strong>Status:</strong> ' + esc(opp.status) + '</p>';
         html += '<p><strong>Score:</strong> ' + (opp.score ? Math.round(opp.score*100) + '%' : '—') + '</p>';
-        if (opp.category === 'startup') {
-            html += '<p><strong>Program:</strong> ' + escHtml(opp.program || '—') + '</p>';
-            html += '<p><strong>Stage:</strong> ' + escHtml(opp.stage || '—') + '</p>';
-            html += '<p><strong>Amount:</strong> ' + escHtml(opp.amount || '—') + '</p>';
-        }
-        if (opp.category === 'grant') {
-            html += '<p><strong>Amount:</strong> ' + escHtml(opp.amount || '—') + '</p>';
-        }
-        if (opp.category === 'job') {
-            html += '<p><strong>Location:</strong> ' + escHtml(opp.location || '—') + '</p>';
-            html += '<p><strong>Remote:</strong> ' + escHtml(opp.remote || '—') + '</p>';
-        }
-        var desc = opp.description || 'No description';
-        var tmp = document.createElement('div');
-        tmp.innerHTML = desc;
-        desc = tmp.textContent || tmp.innerText || desc;
-        html += '<p><strong>Description:</strong></p><p style="white-space:pre-wrap">' + escHtml(desc) + '</p>';
+        html += '<p><strong>Location:</strong> ' + esc(opp.location || '—') + '</p>';
+        html += '<p><strong>Remote:</strong> ' + esc(opp.remote || '—') + '</p>';
+        html += '<p><strong>Description:</strong></p><p style="white-space:pre-wrap">' + esc(opp.description || 'No description') + '</p>';
         html += '<div style="margin-top: 1rem;"><a href="' + opp.url + '" target="_blank" class="btn btn-primary">Open Link</a></div>';
         document.getElementById('modal-body').innerHTML = html;
         document.getElementById('detail-modal').classList.add('open');
     });
 }
-function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function closeModal() { document.getElementById('detail-modal').classList.remove('open'); }
-document.getElementById('detail-modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
+document.getElementById('detail-modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
 
 function applyFilters() {
     const source = document.getElementById('filter-source').value;
@@ -152,10 +110,7 @@ function applyFilters() {
     const search = document.getElementById('filter-search').value.toLowerCase();
     let visible = 0;
     document.querySelectorAll('.opp-row').forEach(row => {
-        const matchesSource = !source || row.dataset.source === source;
-        const matchesStatus = !status || row.dataset.status === status;
-        const matchesSearch = !search || row.dataset.title.toLowerCase().includes(search);
-        const show = matchesSource && matchesStatus && matchesSearch;
+        const show = (!source || row.dataset.source === source) && (!status || row.dataset.status === status) && (!search || row.dataset.title.toLowerCase().includes(search));
         row.style.display = show ? '' : 'none';
         if (show) visible++;
     });
@@ -165,8 +120,7 @@ document.getElementById('filter-source').addEventListener('change', applyFilters
 document.getElementById('filter-status').addEventListener('change', applyFilters);
 document.getElementById('filter-search').addEventListener('input', applyFilters);
 document.addEventListener('DOMContentLoaded', function() {
-    const total = document.querySelectorAll('.opp-row').length;
-    document.getElementById('row-count').textContent = total + ' total';
+    document.getElementById('row-count').textContent = document.querySelectorAll('.opp-row').length + ' total';
 });
 </script>
 {% endblock %}

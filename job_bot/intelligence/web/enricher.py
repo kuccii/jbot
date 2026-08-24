@@ -1,4 +1,7 @@
-"""Visit opportunity URLs and extract full page content for scoring."""
+"""Visit opportunity URLs and extract full page content for scoring.
+
+Supports three backends: Jina Reader, httpx+BS4 (fallback).
+"""
 
 import httpx
 from bs4 import BeautifulSoup
@@ -19,16 +22,45 @@ SKIP_EXTENSIONS = (".pdf", ".doc", ".docx", ".png", ".jpg", ".jpeg", ".gif", ".m
 
 
 class ContentEnricher:
-    def __init__(self):
+    def __init__(self, jina_api_key: str = ""):
         self._client = httpx.AsyncClient(timeout=15.0, follow_redirects=True)
+        self._jina_key = jina_api_key
 
     async def enrich(self, url: str) -> tuple[str, str | None]:
         """Visit a URL and extract readable text content.
+        Tries Jina Reader first (if configured), then falls back to httpx+BS4.
         Returns (extracted_text, error_message).
         """
         if url.lower().endswith(SKIP_EXTENSIONS):
             return "", None
 
+        # Try Jina Reader if configured
+        if self._jina_key:
+            result = await self._enrich_jina(url)
+            if result[0]:
+                return result
+            if result[1] and result[1] != "jina_not_configured":
+                logger.debug("jina_fallback_httpx", url=url, error=result[1])
+
+        # Fallback to httpx + BeautifulSoup
+        return await self._enrich_httpx(url)
+
+    async def _enrich_jina(self, url: str) -> tuple[str, str | None]:
+        try:
+            resp = await self._client.get(
+                f"https://r.jina.ai/{url}",
+                headers={"Authorization": f"Bearer {self._jina_key}"},
+            )
+            if resp.status_code == 200:
+                text = resp.text
+                if any(p in text.lower() for p in DEAD_PHRASES):
+                    return text[:5000], "dead_content"
+                return text[:5000], None
+            return "", f"http_{resp.status_code}"
+        except Exception as e:
+            return "", str(e)[:200]
+
+    async def _enrich_httpx(self, url: str) -> tuple[str, str | None]:
         try:
             resp = await self._client.get(url, headers={"User-Agent": USER_AGENT})
             if resp.status_code in (404, 410):

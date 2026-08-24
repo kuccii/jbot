@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Upwork Settings{% endblock %}
+{% block content %}
+<div class="page-title">Upwork Settings</div>
+
+{% if saved %}
+<div class="card" style="background: #e8f5e9; border: 1px solid #2e7d32; margin-bottom: 1rem;">
+    <p style="color: #2e7d32;">Settings saved</p>
+</div>
+{% endif %}
+
+<form method="post" action="/upwork/settings">
+<div class="card">
+    <div class="card-header">Job Interests</div>
+    <div class="form-group">
+        <label>Keywords (comma-separated)</label>
+        <input type="text" name="keywords" value="{{ keywords|join(', ') }}" placeholder="Python, AI, Data Science" style="width: 100%;">
+    </div>
+    <div style="margin-top: 1rem;">
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</div>
+</form>
+
+<div class="card" style="margin-top: 1rem;">
+    <div class="card-header">API Access (Official Upwork API)</div>
+    <p style="color: #666;">
+        The official API is used when available. Get credentials at
+        <a href="https://www.upwork.com/developer/keys/apply" target="_blank">upwork.com/developer/keys/apply</a>.
+        Create an OAuth 2.0 app, then run the auth flow to get tokens.
+    </p>
+    <ol style="color: #666; font-size: 0.9em;">
+        <li>Create OAuth 2.0 app at Upwork Developer portal</li>
+        <li>Set callback URL to <code>http://localhost:8080/upwork/callback</code></li>
+        <li>Set <code>UPWORK_CLIENT_ID</code>, <code>UPWORK_CLIENT_SECRET</code>, <code>UPWORK_REFRESH_TOKEN</code> in environment or config.yaml</li>
+    </ol>
+    {% if has_api_credentials %}
+    <p style="color: #2e7d32;">API credentials configured</p>
+    {% else %}
+    <p style="color: #999;">API credentials not configured. Falls back to Playwright browser.</p>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top: 1rem;">
+    <div class="card-header">Fetch Jobs Now</div>
+    <p style="color: #666;">Run Upwork discovery immediately with current keywords.</p>
+    <button onclick="runDiscovery()" class="btn btn-primary">Run Discovery</button>
+    <span id="discovery-status" style="margin-left: 1rem; color: #666;"></span>
+</div>
+
+<script>
+async function runDiscovery() {
+    const status = document.getElementById('discovery-status');
+    status.textContent = 'Fetching...';
+    try {
+        const r = await fetch('/api/upwork/discover', { method: 'POST' });
+        const d = await r.json();
+        status.textContent = 'Found ' + d.count + ' new jobs!';
+    } catch(e) {
+        status.textContent = 'Error: ' + e;
+    }
+}
+</script>
+{% endblock %}

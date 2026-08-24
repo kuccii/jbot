@@ -1,0 +1,86 @@
+# job-hunter configuration.
+#
+# Copy this file to config.yaml (in this folder, or wherever you run
+# `job-hunter` from) and fill in your own values. Anything you omit falls
+# back to the defaults in job_hunter/config.py.
+#
+# Secrets (bot tokens, webhook URLs, SMTP passwords) can reference
+# environment variables instead of being written in plain text here, e.g.
+# telegram_bot_token: "${TELEGRAM_BOT_TOKEN}" — job-hunter expands ${VAR}
+# from your shell environment (or a .env file, if you load one) at startup.
+
+profile:
+  name: "Your Name"
+  email: "you@example.com"
+  location: "Kigali, Rwanda"
+  # Skills used for fit scoring (job_hunter/scoring.py). Matches are
+  # word-boundary based, so "go" won't match "google".
+  skills:
+    - python
+    - django
+    - postgresql
+    - react
+  # "junior" | "mid" | "senior" | "" (no preference). Nudges the fit score
+  # toward/away from titles that look like that seniority level.
+  seniority: "mid"
+
+# Keywords a job's title/tags (or title/description, for boards without
+# tags) must mention at least one of, to be stored at all. Leave empty to
+# keep everything that's eligible.
+keywords:
+  - python
+  - backend
+  - fullstack
+
+# Toggle individual job boards on/off. See job_hunter/boards/ for what each
+# one scrapes. "ats" polls the greenhouse/ashby/smartrecruiters companies
+# listed in job_hunter/config.py's DEFAULT_ATS_COMPANIES.
+boards:
+  remoteok: true
+  remote4africa: true
+  himalayas: true
+  remotive: true
+  persona: true
+  workingnomads: true
+  jobicy: true
+  ats: true
+  arc: true
+  foundthejob: true
+  opentrain: true
+  dynamitejobs: true
+  trulyremote: true
+  gig_platforms: true
+  indeed: true
+  weworkremotely: false  # unreliable — 403s from datacenter IPs
+
+database: "data/jobs.db"
+max_jobs_per_board: 200
+
+# Optional: get pinged when new eligible jobs are found. Every channel
+# below is independent and best-effort — configure any subset of them.
+# Run `job-hunter notify-test` after setting this up to check it works.
+notifications:
+  enabled: false
+
+  # Telegram: message @BotFather to create a bot and get a token, then
+  # message your bot once and check https://api.telegram.org/bot<token>/getUpdates
+  # for your chat_id.
+  telegram_bot_token: "${TELEGRAM_BOT_TOKEN}"
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"
+
+  # Slack incoming webhook or Discord webhook URL — same payload shape works
+  # for both.
+  webhook_url: "${JOB_HUNTER_WEBHOOK_URL}"
+
+  # Plain SMTP email (e.g. Gmail app password, or any provider's SMTP).
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: "${SMTP_USER}"
+  smtp_password: "${SMTP_PASSWORD}"
+  smtp_from: "job-hunter@example.com"
+  smtp_to: "you@example.com"
+  smtp_use_tls: true
+
+  # Only notify about jobs scoring at or above this fit score (0-100).
+  # Set to 0 to be notified about everything eligible.
+  min_score: 20

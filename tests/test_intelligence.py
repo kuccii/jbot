@@ -1,7 +1,7 @@
 import pytest
 from job_bot.intelligence.providers.factory import create_provider
-from job_bot.intelligence.matcher import Matcher
-from job_bot.intelligence.drafter import Drafter
+from job_bot.intelligence.analysis.matcher import Matcher
+from job_bot.intelligence.generation.drafter import Drafter
 
 
 class TestProviders:

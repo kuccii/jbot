@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title[:50] }} — Job Hunter{% endblock %}
+
+{% block content %}
+<a href="/jobs" style="color: var(--text-muted); font-size: 0.9rem;">← Back to jobs</a>
+
+<div class="detail-header" style="margin-top: 1.5rem;">
+    <h1>{{ job.title }}</h1>
+    <div class="detail-meta">
+        {% if job.company %}<span>🏢 {{ job.company }}</span>{% endif %}
+        <span><span class="badge badge-board">{{ job.board }}</span></span>
+        <span><span class="badge badge-{{ job.status }}">{{ job.status }}</span></span>
+        {% if job.score %}<span><span class="badge badge-score">fit {{ job.score }}/100</span></span>{% endif %}
+    </div>
+    <div class="detail-meta" style="margin-top: 0.75rem;">
+        {% if job.location %}<span>📍 {{ job.location }}</span>{% endif %}
+        {% if job.remote %}<span>🌍 {{ job.remote }}</span>{% endif %}
+        {% if job.posted_at %}<span>📅 {{ job.posted_at[:10] }}</span>{% endif %}
+        <span>🔍 Found: {{ job.found_at[:10] }}</span>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="actions" style="margin-bottom: 2rem;">
+    <button class="btn" onclick="setStatus({{ job.id }}, 'saved')">⭐ Save</button>
+    <button class="btn" onclick="setStatus({{ job.id }}, 'applied')">📤 Mark Applied</button>
+    <button class="btn" onclick="setStatus({{ job.id }}, 'hidden')">👁️ Hide</button>
+    {% if job.url %}
+    <a href="{{ job.url }}" target="_blank" class="btn btn-primary">🔗 Open Job</a>
+    {% endif %}
+</div>
+
+<!-- Eligibility -->
+{% if job.eligibility_note %}
+<div class="card" style="border-color: var(--green);">
+    <h2 style="color: var(--green); font-size: 0.95rem;">✓ Eligibility</h2>
+    <p>{{ job.eligibility_note }}</p>
+</div>
+{% endif %}
+
+{% if job.score_reasons %}
+<div class="card" style="border-color: var(--accent);">
+    <h2 style="color: var(--accent); font-size: 0.95rem;">🎯 Fit score: {{ job.score }}/100</h2>
+    <p>{{ job.score_reasons }}</p>
+</div>
+{% endif %}
+
+<!-- Description -->
+{% if job.description %}
+<div class="card">
+    <h2>Description</h2>
+    <div class="detail-body">{{ job.description[:3000] }}</div>
+    {% if job.description|length > 3000 %}
+    <p style="color: var(--text-muted); margin-top: 1rem;">
+        ... ({{ job.description|length - 3000 }} more characters)
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Tags -->
+{% if job.tags %}
+<div class="card">
+    <h2>Tags</h2>
+    <div class="tags">
+        {% for tag in job.tags.split(',') if tag.strip() %}
+        <span class="badge badge-board" style="margin-right: 0.5rem;">{{ tag.strip() }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Metadata -->
+<div class="card">
+    <h2>Metadata</h2>
+    <table>
+        <tr><td style="color: var(--text-muted); width: 150px;">ID</td><td>{{ job.id }}</td></tr>
+        <tr><td style="color: var(--text-muted);">Board</td><td>{{ job.board }}</td></tr>
+        <tr><td style="color: var(--text-muted);">Status</td><td>{{ job.status }}</td></tr>
+        <tr><td style="color: var(--text-muted);">Found At</td><td>{{ job.found_at }}</td></tr>
+        {% if job.posted_at %}
+        <tr><td style="color: var(--text-muted);">Posted At</td><td>{{ job.posted_at }}</td></tr>
+        {% endif %}
+    </table>
+</div>
+
+<script>
+async function setStatus(jobId, status) {
+    await fetch(`/jobs/${jobId}/status?status=${status}`, { method: 'POST' });
+    location.reload();
+}
+</script>
+{% endblock %}
