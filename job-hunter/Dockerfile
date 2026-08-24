@@ -8,9 +8,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project
-COPY pyproject.toml README.md ./
-COPY job_hunter/ job_hunter/
-COPY config.example.yaml config.yaml
+COPY job-hunter/pyproject.toml job-hunter/README.md ./
+COPY job-hunter/job_hunter/ job_hunter/
+COPY job-hunter/config.example.yaml config.yaml
 
 # Install
 RUN pip install --no-cache-dir -e .
