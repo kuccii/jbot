@@ -19,7 +19,7 @@ services:
     container_name: job-hunter
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./job-hunter/data:/app/data
       - ./job-hunter/config.yaml:/app/config.yaml:ro
