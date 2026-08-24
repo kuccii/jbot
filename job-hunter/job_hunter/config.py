@@ -171,21 +171,30 @@ DEFAULT_ATS_COMPANIES: list[dict] = [
 ]
 
 class ProxyConfig(BaseModel):
-    """Proxy rotation for scraping. Set keys in env or config.yaml.
+    """Proxy rotation for scraping.
 
-    Managed proxies (recommended):
+    Free options (no credit card):
+      - zenrows_key: ZenRows key (5,000 free reqs/mo — best free tier)
+        Sign up: https://www.zenrows.com/
+      - scrapedo_token: Scrape.do token (1,000 free reqs/mo)
+        Sign up: https://scrape.do/
+      - scrapfly_key: Scrapfly key (1,000 free reqs/mo)
+        Sign up: https://scrapfly.io/
       - scraperapi_key: ScraperAPI key (1,000 free reqs/mo)
+        Sign up: https://www.scraperapi.com/
       - scrapingbee_key: ScrapingBee key (1,000 free reqs/mo)
-      - proxy_url: Generic rotating proxy URL (e.g., http://user:pass@host:port)
+        Sign up: https://www.scrapingbee.com/
 
-    Free proxies (fallback, low reliability):
-      - use_free: Enable free proxy rotation (not recommended for production)
+    Paid options:
+      - proxy_url: Generic rotating proxy URL
     """
+    zenrows_key: str = ""
+    scrapedo_token: str = ""
+    scrapfly_key: str = ""
     scraperapi_key: str = ""
     scrapingbee_key: str = ""
     proxy_url: str = ""
-    use_free: bool = False
-    # Boards that should always use proxy (even if proxy is configured globally)
+    # Boards that should always use proxy
     force_proxy_boards: list[str] = Field(default_factory=lambda: [
         "indeed", "indeed_entry", "workday", "startupjobs",
         "meetfrank", "dynamitejobs", "trulyremote", "wwr_entry",

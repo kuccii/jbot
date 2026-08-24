@@ -94,19 +94,27 @@ notifications:
 # Proxy rotation for scraping. Essential for boards that block datacenter
 # IPs (Indeed, Workday, StartupJobs, etc.).
 #
-# Options:
-#   1. ScraperAPI (recommended) — 1,000 free reqs/mo, JS rendering
-#      Sign up at: https://www.scraperapi.com/
-#   2. ScrapingBee — 1,000 free reqs/mo, Cloudflare bypass
-#      Sign up at: https://www.scrapingbee.com/
-#   3. Generic proxy — any rotating residential proxy URL
-#   4. Free proxies — not recommended, ~2% success rate
+# FREE options (no credit card needed — just sign up):
+#   1. ZenRows — 5,000 free reqs/month (BEST free tier)
+#      Sign up: https://www.zenrows.com/
+#   2. Scrape.do — 1,000 free reqs/month
+#      Sign up: https://scrape.do/
+#   3. Scrapfly — 1,000 free reqs/month
+#      Sign up: https://scrapfly.io/
+#   4. ScraperAPI — 1,000 free reqs/month
+#      Sign up: https://www.scraperapi.com/
+#   5. ScrapingBee — 1,000 free reqs/month
+#      Sign up: https://www.scrapingbee.com/
+#
+# PAID options:
+#   - proxy_url: any rotating residential proxy URL
 proxy:
-  scraperapi_key: "${SCRAPERAPI_KEY}"
-  scrapingbee_key: "${SCRAPINGBEE_KEY}"
+  zenrows_key: "${ZENROWS_KEY}"          # Best free: 5K reqs/mo
+  scrapedo_token: "${SCRAPEDO_TOKEN}"     # Free: 1K reqs/mo
+  scrapfly_key: "${SCRAPFLY_KEY}"         # Free: 1K reqs/mo
+  scraperapi_key: "${SCRAPERAPI_KEY}"     # Free: 1K reqs/mo
+  scrapingbee_key: "${SCRAPINGBEE_KEY}"   # Free: 1K reqs/mo
   proxy_url: ""  # e.g., http://user:pass@proxy.host:port
-  use_free: false  # Enable free proxy rotation (unreliable)
-  # Boards that always use proxy (even if global proxy is off)
   force_proxy_boards:
     - indeed
     - indeed_entry

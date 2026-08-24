@@ -3,7 +3,7 @@
 Provides three fetching strategies:
   1. ``get()`` — async httpx with retries (default, fast)
   2. ``get_cf()`` — sync curl_cffi with Chrome impersonation (bypasses Cloudflare)
-  3. ``get_proxied()`` — async httpx via managed proxy (ScraperAPI / ScrapingBee)
+  3. ``get_proxied()`` — async httpx via free scraping APIs + proxy rotation
 """
 
 import asyncio
@@ -36,13 +36,18 @@ DEFAULT_HEADERS = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"
 class ProxyManager:
     """Manages proxy rotation for scraping.
 
-    Supports:
-      - Managed proxies (ScraperAPI, ScrapingBee, Bright Data)
-      - Free proxy lists (fallback)
-      - Direct connection (no proxy)
+    Free sources (no credit card required):
+      1. ZenRows     — 5,000 free reqs/month (best free tier)
+      2. Scrape.do   — 1,000 free reqs/month
+      3. Scrapfly    — 1,000 free reqs/month
+      4. ScraperAPI  — 1,000 free reqs/month
+      5. Free proxy lists — fallback, ~2% success rate
+
+    Paid sources (if configured):
+      - ScrapingBee, generic proxy URL
     """
 
-    # Free proxy list sources
+    # Free proxy list sources (last resort)
     FREE_PROXY_URLS = [
         "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
         "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/https.txt",
@@ -53,9 +58,12 @@ class ProxyManager:
         self._free_proxies: list[str] = []
         self._free_index = 0
         self._last_fetch = 0.0
-        # Managed proxy config from environment
+        # API keys from environment
         self.scraper_api_key = os.getenv("SCRAPERAPI_KEY", "")
         self.scrapingbee_key = os.getenv("SCRAPINGBEE_KEY", "")
+        self.scrapedo_token = os.getenv("SCRAPEDO_TOKEN", "")
+        self.zenrows_key = os.getenv("ZENROWS_KEY", "")
+        self.scrapfly_key = os.getenv("SCRAPFLY_KEY", "")
         self.proxy_url = os.getenv("PROXY_URL", "")  # Generic proxy URL
 
     def _refresh_free_proxies(self) -> None:
@@ -83,31 +91,53 @@ class ProxyManager:
         except Exception:
             pass
 
+    # --- Managed proxy URL builders ---
+
     def get_scraperapi_url(self, url: str) -> str:
-        """Wrap a URL through ScraperAPI."""
         return f"http://api.scraperapi.com?api_key={self.scraper_api_key}&url={url}"
 
     def get_scrapingbee_url(self, url: str) -> str:
-        """Wrap a URL through ScrapingBee."""
         return f"https://app.scrapingbee.com/api/v1/?api_key={self.scrapingbee_key}&url={url}&render_js=true"
+
+    def get_scrapedo_url(self, url: str) -> str:
+        """Scrape.do — 1,000 free reqs/month, no credit card."""
+        return f"http://api.scrape.do/?token={self.scrapedo_token}&url={url}"
+
+    def get_zenrows_url(self, url: str) -> str:
+        """ZenRows — 5,000 free reqs/month, no credit card. Best free tier."""
+        return f"https://api.zenrows.com/v1/?apikey={self.zenrows_key}&url={url}&js_render=true&antibot=true"
+
+    def get_scrapfly_url(self, url: str) -> str:
+        """Scrapfly — 1,000 free reqs/month, no credit card."""
+        return f"https://api.scrapfly.io/scrape?key={self.scrapfly_key}&url={url}&render_js=true"
+
+    # --- Proxy selection ---
 
     def get_proxy(self, target: str = "generic") -> Optional[str]:
         """Get a proxy URL for the given target.
 
-        Returns the proxy URL string, or None if no proxy is available.
-        Priority: configured proxy > ScraperAPI > ScrapingBee > free proxies.
+        Priority:
+          1. Configured proxy URL (paid residential)
+          2. Free API tiers (ZenRows > Scrape.do > Scrapfly > ScraperAPI > ScrapingBee)
+          3. Free proxy lists (last resort)
         """
-        # 1. Generic proxy (e.g., rotating residential)
+        # 1. Paid proxy (if configured)
         if self.proxy_url:
             return self.proxy_url
 
-        # 2. Managed proxies (check if we have credits)
+        # 2. Free API tiers (best reliability, limited quota)
+        if self.zenrows_key:
+            return "managed:zenrows"
+        if self.scrapedo_token:
+            return "managed:scrapedo"
+        if self.scrapfly_key:
+            return "managed:scrapfly"
         if self.scraper_api_key:
             return "managed:scraperapi"
         if self.scrapingbee_key:
             return "managed:scrapingbee"
 
-        # 3. Free proxies
+        # 3. Free proxy lists (fallback)
         self._refresh_free_proxies()
         if self._free_proxies:
             proxy = self._free_proxies[self._free_index % len(self._free_proxies)]
@@ -122,6 +152,9 @@ class ProxyManager:
             self.proxy_url
             or self.scraper_api_key
             or self.scrapingbee_key
+            or self.scrapedo_token
+            or self.zenrows_key
+            or self.scrapfly_key
         )
 
 
@@ -158,34 +191,29 @@ async def get(client: httpx.AsyncClient, url: str, timeout: float = 15.0,
 
 
 async def get_proxied(client: httpx.AsyncClient, url: str, timeout: float = 20.0,
-                      retries: int = 2, use_proxy: bool = True) -> httpx.Response:
-    """GET with proxy rotation. Tries managed proxy first, then free proxies, then direct.
-
-    Parameters
-    ----------
-    client:
-        The httpx async client (used for direct requests).
-    url:
-        The URL to fetch.
-    timeout:
-        Request timeout.
-    retries:
-        Number of retries with different proxies.
-    use_proxy:
-        Whether to attempt proxy routing.
-    """
+                      retries: int = 3, use_proxy: bool = True) -> httpx.Response:
+    """GET with proxy rotation. Tries free API tiers first, then free proxies, then direct."""
     pm = get_proxy_manager()
     last_error: Exception | None = None
 
     for attempt in range(retries + 1):
         proxy_url = pm.get_proxy() if use_proxy else None
         try:
-            if proxy_url == "managed:scraperapi":
-                proxy_api_url = pm.get_scraperapi_url(url)
-                resp = await client.get(proxy_api_url, timeout=timeout, follow_redirects=True)
+            if proxy_url == "managed:zenrows":
+                api_url = pm.get_zenrows_url(url)
+                resp = await client.get(api_url, timeout=timeout, follow_redirects=True)
+            elif proxy_url == "managed:scrapedo":
+                api_url = pm.get_scrapedo_url(url)
+                resp = await client.get(api_url, timeout=timeout, follow_redirects=True)
+            elif proxy_url == "managed:scrapfly":
+                api_url = pm.get_scrapfly_url(url)
+                resp = await client.get(api_url, timeout=timeout, follow_redirects=True)
+            elif proxy_url == "managed:scraperapi":
+                api_url = pm.get_scraperapi_url(url)
+                resp = await client.get(api_url, timeout=timeout, follow_redirects=True)
             elif proxy_url == "managed:scrapingbee":
-                proxy_api_url = pm.get_scrapingbee_url(url)
-                resp = await client.get(proxy_api_url, timeout=timeout, follow_redirects=True)
+                api_url = pm.get_scrapingbee_url(url)
+                resp = await client.get(api_url, timeout=timeout, follow_redirects=True)
             elif proxy_url:
                 # Free proxy: use httpx proxy parameter
                 resp = await client.get(
@@ -216,18 +244,6 @@ def get_cf(url: str, timeout: float = 15.0, impersonate: str = "chrome") -> Opti
 
     Bypasses Cloudflare challenges that block regular httpx/requests.
     Returns the response text, or None on failure.
-
-    Parameters
-    ----------
-    url:
-        The URL to fetch.
-    timeout:
-        Request timeout in seconds.
-    impersonate:
-        Browser to impersonate. "chrome" works for most sites,
-        "safari" is needed for Indeed (blocks Chrome).
-
-    This is a *sync* function — use from async code via asyncio.to_thread().
     """
     if not _HAS_CF:
         return None
