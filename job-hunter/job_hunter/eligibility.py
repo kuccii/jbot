@@ -324,34 +324,26 @@ def check_eligibility(job: Job) -> tuple[bool, str]:
         return True, f"EMEA (open to Africa): {loc[:60]}"
 
     # ATS "Remote" jobs: if the ORIGINAL location started with "Remote"
-    # (e.g. "Remote - US", "Remote, San Francisco"), the job IS remote
-    # even though it mentions a region. Many companies post "Remote - US"
-    # but actually hire globally. Treat as eligible if the remaining text
-    # is only a country/region code (not a specific city).
+    # but mentions a specific country/region, reject it.
+    # "Remote - US" -> US-only, not accessible from Rwanda
+    # "Remote Worldwide" -> eligible (already caught by GLOBAL check above)
+    # "Remote, Anywhere" -> eligible (already caught by GLOBAL check above)
+    # "Remote" alone -> eligible (remainder is empty, caught above)
+    # Only accept if remainder is empty (pure "Remote") or mentions
+    # worldwide/anywhere/global/africa.
     loc_lower = (job.location or "").lower().strip()
     if loc_lower.startswith("remote"):
-        # "Remote - US" -> remainder is "- us" or "us" -> eligible (country, not city)
-        # "Remote, San Francisco" -> remainder is "san francisco" -> not eligible
-        # "Remote - US, Select States" -> still too restricted
         stripped_remainder = remainder.lstrip("- ").strip()
-        # Check if remainder is just a country name (not a specific city)
-        is_country = any(c in stripped_remainder for c in [
-            "us", "usa", "united states", "canada", "uk", "united kingdom",
-            "europe", "emea", "apac", "latam", "americas",
-        ])
-        is_city = any(city in stripped_remainder for city in [
-            "san francisco", "new york", "london", "berlin", "paris",
-            "chicago", "los angeles", "seattle", "boston", "austin",
-            "cardiff", "amsterdam", "dublin", "toronto", "sydney",
-            "melbourne", "singapore", "tokyo", "bangalore", "mumbai",
-            "bay area", "select states", "specific states",
-        ])
-        if is_city:
-            return False, f"restricted location: {loc[:60]}"
-        if is_country:
-            return True, f"remote (country-level, likely global): {loc[:60]}"
-        # Other remote-prefixed locations
-        return True, f"remote (prefixed): {loc[:60]}"
+        if not stripped_remainder:
+            return True, "remote (no restriction)"
+        # Accept worldwide/anywhere/global signals
+        if _GLOBAL_RE.search(stripped_remainder):
+            return True, f"worldwide: {loc[:60]}"
+        if _AFRICA_RE.search(stripped_remainder):
+            return True, f"Africa: {loc[:60]}"
+        # Reject everything else — "Remote - US", "Remote - Canada",
+        # "Remote - UK", "Remote (USA)", etc. are country-restricted.
+        return False, f"restricted location: {loc[:60]}"
 
     if _RESTRICTED_RE.search(remainder):
         return False, f"restricted location: {loc[:60]}"
