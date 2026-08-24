@@ -90,3 +90,29 @@ notifications:
   # Only notify about jobs scoring at or above this fit score (0-100).
   # Set to 0 to be notified about everything eligible.
   min_score: 20
+
+# Proxy rotation for scraping. Essential for boards that block datacenter
+# IPs (Indeed, Workday, StartupJobs, etc.).
+#
+# Options:
+#   1. ScraperAPI (recommended) — 1,000 free reqs/mo, JS rendering
+#      Sign up at: https://www.scraperapi.com/
+#   2. ScrapingBee — 1,000 free reqs/mo, Cloudflare bypass
+#      Sign up at: https://www.scrapingbee.com/
+#   3. Generic proxy — any rotating residential proxy URL
+#   4. Free proxies — not recommended, ~2% success rate
+proxy:
+  scraperapi_key: "${SCRAPERAPI_KEY}"
+  scrapingbee_key: "${SCRAPINGBEE_KEY}"
+  proxy_url: ""  # e.g., http://user:pass@proxy.host:port
+  use_free: false  # Enable free proxy rotation (unreliable)
+  # Boards that always use proxy (even if global proxy is off)
+  force_proxy_boards:
+    - indeed
+    - indeed_entry
+    - workday
+    - startupjobs
+    - meetfrank
+    - dynamitejobs
+    - trulyremote
+    - wwr_entry

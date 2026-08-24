@@ -89,6 +89,29 @@ def _make_board(name: str, cfg: Config) -> Board:
 
 async def _run_board(name: str, store: Store, cfg: Config) -> dict:
     board = _make_board(name, cfg)
+
+    # Apply proxy for boards that need it
+    proxy_cfg = cfg.proxy
+    use_proxy = (
+        proxy_cfg.proxy_url
+        or proxy_cfg.scraperapi_key
+        or proxy_cfg.scrapingbee_key
+        or name in proxy_cfg.force_proxy_boards
+    )
+    if use_proxy:
+        import os
+        from job_hunter.fetch import get_proxy_manager
+        pm = get_proxy_manager()
+        # Inject keys from config
+        if proxy_cfg.scraperapi_key:
+            pm.scraperapi_key = proxy_cfg.scraperapi_key
+        if proxy_cfg.scrapingbee_key:
+            pm.scrapingbee_key = proxy_cfg.scrapingbee_key
+        if proxy_cfg.proxy_url:
+            pm.proxy_url = proxy_cfg.proxy_url
+        pm._last_fetch = 0.0  # Force refresh free proxies if needed
+        _log(f"  [proxy] {name}: using proxy rotation")
+
     try:
         jobs = await board.fetch(limit=cfg.max_jobs_per_board)
     except Exception as exc:

@@ -170,6 +170,28 @@ DEFAULT_ATS_COMPANIES: list[dict] = [
     {"name": "CrowdStrike", "ats": "smartrecruiters", "slug": "crowdstrike"},
 ]
 
+class ProxyConfig(BaseModel):
+    """Proxy rotation for scraping. Set keys in env or config.yaml.
+
+    Managed proxies (recommended):
+      - scraperapi_key: ScraperAPI key (1,000 free reqs/mo)
+      - scrapingbee_key: ScrapingBee key (1,000 free reqs/mo)
+      - proxy_url: Generic rotating proxy URL (e.g., http://user:pass@host:port)
+
+    Free proxies (fallback, low reliability):
+      - use_free: Enable free proxy rotation (not recommended for production)
+    """
+    scraperapi_key: str = ""
+    scrapingbee_key: str = ""
+    proxy_url: str = ""
+    use_free: bool = False
+    # Boards that should always use proxy (even if proxy is configured globally)
+    force_proxy_boards: list[str] = Field(default_factory=lambda: [
+        "indeed", "indeed_entry", "workday", "startupjobs",
+        "meetfrank", "dynamitejobs", "trulyremote", "wwr_entry",
+    ])
+
+
 class Config(BaseModel):
     profile: ProfileConfig = Field(default_factory=ProfileConfig)
     boards: dict[str, bool] = Field(default_factory=lambda: {
@@ -203,6 +225,7 @@ class Config(BaseModel):
     database: str = "data/jobs.db"
     max_jobs_per_board: int = 9999  # No limit — scrape everything
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
+    proxy: ProxyConfig = Field(default_factory=ProxyConfig)
 
 
 def load_config(config_path: str | None = None) -> Config:

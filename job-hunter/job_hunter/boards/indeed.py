@@ -16,7 +16,7 @@ import re
 from html import unescape
 
 from job_hunter.boards.base import Board
-from job_hunter.fetch import get_cf
+from job_hunter.fetch import get_cf, get_proxied, get_proxy_manager
 from job_hunter.models import Job, AUDIENCE_TECH, AUDIENCE_ENTRY, AUDIENCE_CREATIVE
 
 # All working Indeed country domains.
@@ -201,7 +201,17 @@ class IndeedBoard(Board):
             if rate_limited >= 5:
                 break
 
-            result = await asyncio.to_thread(get_cf, url, 12.0, "safari")
+            # Try managed proxy first (ScraperAPI/ScrapingBee), then curl_cffi
+            pm = get_proxy_manager()
+            if pm.scraper_api_key or pm.scrapingbee_key:
+                try:
+                    async with self.client_proxied() as client:
+                        resp = await get_proxied(client, url, timeout=20.0, retries=1)
+                        result = resp.text
+                except Exception:
+                    result = await asyncio.to_thread(get_cf, url, 12.0, "safari")
+            else:
+                result = await asyncio.to_thread(get_cf, url, 12.0, "safari")
 
             if not result:
                 rate_limited += 1
