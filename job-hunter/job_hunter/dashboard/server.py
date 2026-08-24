@@ -45,8 +45,7 @@ async def home(request: Request):
         recent = conn.execute(
             "SELECT * FROM jobs WHERE eligible=1 ORDER BY found_at DESC LIMIT 10"
         ).fetchall()
-        return templates.TemplateResponse("home.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "home.html", {
             "stats": stats,
             "recent": recent,
         })
@@ -72,8 +71,7 @@ async def jobs_page(
         boards = [r["board"] for r in conn.execute(
             "SELECT DISTINCT board FROM jobs WHERE eligible=1 ORDER BY board"
         ).fetchall()]
-        return templates.TemplateResponse("jobs.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "jobs.html", {
             "jobs": jobs,
             "total": total,
             "page": page,
@@ -92,9 +90,8 @@ async def job_detail(request: Request, job_id: int):
     try:
         job = conn.execute("SELECT * FROM jobs WHERE id=?", (job_id,)).fetchone()
         if not job:
-            return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
-        return templates.TemplateResponse("detail.html", {
-            "request": request,
+            return templates.TemplateResponse(request, "404.html", {}, status_code=404)
+        return templates.TemplateResponse(request, "detail.html", {
             "job": job,
         })
     finally:
@@ -142,8 +139,7 @@ async def platforms_page(request: Request):
         tech_jobs = conn.execute(
             "SELECT * FROM jobs WHERE eligible=1 AND audience='tech' ORDER BY found_at DESC LIMIT 30"
         ).fetchall()
-        return templates.TemplateResponse("platforms.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "platforms.html", {
             "platforms": platforms,
             "entry_platforms": entry_platforms,
             "workday_jobs": workday_jobs,
