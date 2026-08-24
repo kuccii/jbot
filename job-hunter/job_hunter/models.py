@@ -21,7 +21,7 @@ def _norm_key(text: str) -> str:
     """Normalize a string for cross-board duplicate matching.
 
     Lowercases, strips punctuation, and collapses whitespace so
-    "Senior, AI Engineer (Remote)" and "senior AI engineer remote" match.
+    "Senior, AI Engineer (Remote)" and "senior ai engineer remote" match.
     """
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", text.lower())).strip()
 
@@ -41,6 +41,8 @@ class Job:
     eligible_countries: list[str] = field(default_factory=list)
     # Audience segment: tech | entry | creative | gig (comma-separated if multiple)
     audience: str = ""
+    score: int = 0
+    score_reasons: str = ""
 
     def as_dict(self) -> dict:
         return {
@@ -75,29 +77,49 @@ CREATE TABLE IF NOT EXISTS jobs (
     eligibility_note TEXT DEFAULT '',
     status TEXT DEFAULT 'new',
     audience TEXT DEFAULT '',
+    score INTEGER DEFAULT 0,
+    score_reasons TEXT DEFAULT '',
+    notified INTEGER DEFAULT 0,
     found_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_jobs_board ON jobs(board);
 CREATE INDEX IF NOT EXISTS ix_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS ix_jobs_audience ON jobs(audience);
+CREATE INDEX IF NOT EXISTS ix_jobs_score ON jobs(score);
+CREATE INDEX IF NOT EXISTS ix_jobs_notified ON jobs(notified);
 """
 
 
 class Store:
+    _MIGRATIONS: list[str] = [
+        "ALTER TABLE jobs ADD COLUMN score INTEGER DEFAULT 0",
+        "ALTER TABLE jobs ADD COLUMN score_reasons TEXT DEFAULT ''",
+        "ALTER TABLE jobs ADD COLUMN notified INTEGER DEFAULT 0",
+        "ALTER TABLE jobs ADD COLUMN audience TEXT DEFAULT ''",
+    ]
+
     def __init__(self, db_path: str):
         path = Path(db_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(path))
         self.conn.row_factory = sqlite3.Row
-        # Migration: add audience column if missing (for existing DBs)
-        try:
-            self.conn.execute("ALTER TABLE jobs ADD COLUMN audience TEXT DEFAULT ''")
-            self.conn.commit()
-        except sqlite3.OperationalError:
-            pass  # Column already exists
+        self._migrate()
         self.conn.executescript(SCHEMA)
 
-    def add_job(self, job: Job, eligible: bool, note: str) -> str:
+    def _migrate(self) -> None:
+        """Add any columns missing from an older database file."""
+        existing = {r["name"] for r in self.conn.execute("PRAGMA table_info(jobs)")}
+        for stmt in self._MIGRATIONS:
+            col = stmt.split("ADD COLUMN")[1].split()[0]
+            if col not in existing:
+                try:
+                    self.conn.execute(stmt)
+                except sqlite3.OperationalError:
+                    pass
+        self.conn.commit()
+
+    def add_job(self, job: Job, eligible: bool, note: str,
+                score: int = 0, score_reasons: str = "") -> str:
         """Insert if new. Returns 'new', 'exists', or 'duplicate'.
 
         'exists'  — the exact URL was already stored (same board re-fetch).
@@ -125,23 +147,48 @@ class Store:
                 ):
                     return "duplicate"
 
-        self.conn.execute(
-            """INSERT INTO jobs
-               (title, company, url, board, location, remote, tags, description,
-                posted_at, eligible_countries, eligible, eligibility_note, status,
-                audience, found_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                job.title, job.company, job.url, job.board, job.location,
-                job.remote, job.tags, job.description, job.posted_at,
-                ",".join(job.eligible_countries),
-                1 if eligible else 0, note, "new",
-                job.audience,
-                datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            ),
+        cols = (
+            "title, company, url, board, location, remote, tags, description, "
+            "posted_at, eligible_countries, eligible, eligibility_note, status, "
+            "audience, score, score_reasons, notified, found_at"
         )
+        n_cols = len(cols.split(", "))
+        placeholders = ",".join(["?"] * n_cols)
+        sql = f"INSERT INTO jobs ({cols}) VALUES ({placeholders})"
+        self.conn.execute(sql, (
+            job.title, job.company, job.url, job.board, job.location,
+            job.remote, job.tags, job.description, job.posted_at,
+            ",".join(job.eligible_countries),
+            1 if eligible else 0, note, "new",
+            job.audience, score, score_reasons, 0,
+            datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        ))
         self.conn.commit()
         return "new"
+
+    def set_score(self, job_id: int, score: int, reasons: str) -> None:
+        self.conn.execute(
+            "UPDATE jobs SET score = ?, score_reasons = ? WHERE id = ?",
+            (score, reasons, job_id),
+        )
+        self.conn.commit()
+
+    def unnotified(self, limit: int = 200) -> list[sqlite3.Row]:
+        """Eligible jobs that haven't been sent in a notification digest yet."""
+        return self.conn.execute(
+            """SELECT * FROM jobs WHERE eligible = 1 AND notified = 0
+               ORDER BY score DESC, found_at DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+
+    def mark_notified(self, job_ids: list[int]) -> None:
+        if not job_ids:
+            return
+        placeholders = ",".join("?" for _ in job_ids)
+        self.conn.execute(
+            f"UPDATE jobs SET notified = 1 WHERE id IN ({placeholders})", job_ids
+        )
+        self.conn.commit()
 
     def list_jobs(self, board: str | None = None, eligible_only: bool = True,
                   status: str | None = None, audience: str | None = None,
@@ -161,7 +208,7 @@ class Store:
             params.append(f"%{audience}%")
         if clauses:
             query += " WHERE " + " AND ".join(clauses)
-        query += " ORDER BY found_at DESC LIMIT ?"
+        query += " ORDER BY score DESC, found_at DESC LIMIT ?"
         params.append(limit)
         return self.conn.execute(query, params).fetchall()
 
@@ -182,7 +229,13 @@ class Store:
                 "SELECT audience, COUNT(*) AS n FROM jobs WHERE audience != '' GROUP BY audience ORDER BY n DESC"
             )
         }
-        return {"total": total, "eligible": eligible, "by_board": by_board, "by_audience": by_audience}
+        by_status = {
+            r["status"]: r["n"]
+            for r in self.conn.execute(
+                "SELECT status, COUNT(*) AS n FROM jobs GROUP BY status ORDER BY n DESC"
+            )
+        }
+        return {"total": total, "eligible": eligible, "by_board": by_board, "by_audience": by_audience, "by_status": by_status}
 
     def mark(self, job_id: int, status: str) -> bool:
         cur = self.conn.execute(
@@ -212,7 +265,7 @@ class Store:
         sql = "SELECT * FROM jobs"
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        sql += " ORDER BY found_at DESC LIMIT ?"
+        sql += " ORDER BY score DESC, found_at DESC LIMIT ?"
         params.append(limit)
         return self.conn.execute(sql, params).fetchall()
 

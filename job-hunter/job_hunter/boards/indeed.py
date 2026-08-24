@@ -55,12 +55,17 @@ SKILLS: list[tuple[str, str]] = [
     ("software-engineer", AUDIENCE_TECH),
     ("data-scientist", AUDIENCE_TECH),
     ("machine-learning", AUDIENCE_TECH),
-    # ── Entry-Level / Fast Entry — no degree required (5) ────────────
+    # ── Entry-Level / Fast Entry — no degree required (10) ───────────
     ("virtual-assistant", AUDIENCE_ENTRY),
     ("data-entry-clerk", AUDIENCE_ENTRY),
     ("customer-support", AUDIENCE_ENTRY),
     ("chat-support", AUDIENCE_ENTRY),
     ("transcriptionist", AUDIENCE_ENTRY),
+    ("administrative-assistant", AUDIENCE_ENTRY),
+    ("call-center-agent", AUDIENCE_ENTRY),
+    ("help-desk", AUDIENCE_ENTRY),
+    ("bookkeeper", AUDIENCE_ENTRY),
+    ("scheduler", AUDIENCE_ENTRY),
     # ── Creative / Marketing (3) ─────────────────────────────────────
     ("content-writer", AUDIENCE_CREATIVE),
     ("graphic-designer", AUDIENCE_CREATIVE),

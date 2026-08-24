@@ -1,9 +1,26 @@
 """Configuration loading for job-hunter."""
 
+import os
+import re
 from pathlib import Path
 
 import yaml
 from pydantic import BaseModel, Field
+
+# Matches ${VAR_NAME} in config.yaml string values so secrets (bot tokens,
+# SMTP passwords, webhook URLs) live in the environment / .env, not in the
+# committed config file.
+_ENV_VAR_RE = re.compile(r"\$\\{([A-Za-z_][A-Za-z0-9_]*)\\}")
+
+
+def _expand_env(value):
+    if isinstance(value, str):
+        return _ENV_VAR_RE.sub(lambda m: os.environ.get(m.group(1), ""), value)
+    if isinstance(value, dict):
+        return {k: _expand_env(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_expand_env(v) for v in value]
+    return value
 
 
 class ProfileConfig(BaseModel):
@@ -11,6 +28,30 @@ class ProfileConfig(BaseModel):
     email: str = ""
     location: str = "Kigali, Rwanda"
     skills: list[str] = Field(default_factory=list)
+    # "junior" | "mid" | "senior" | "" (no preference) — used by scoring.
+    seniority: str = ""
+
+
+class NotificationConfig(BaseModel):
+    enabled: bool = False
+
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+    # Slack incoming webhook or Discord webhook URL — both accept the same
+    # simple {"text"/"content": ...} payload shape.
+    webhook_url: str = ""
+
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_to: str = ""
+    smtp_use_tls: bool = True
+
+    # Only notify about jobs scoring at or above this fit score (0-100).
+    min_score: int = 0
 
 
 class ATSCompanyConfig(BaseModel):
@@ -161,6 +202,7 @@ class Config(BaseModel):
     )
     database: str = "data/jobs.db"
     max_jobs_per_board: int = 9999  # No limit — scrape everything
+    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
 
 
 def load_config(config_path: str | None = None) -> Config:
@@ -172,4 +214,5 @@ def load_config(config_path: str | None = None) -> Config:
             data = yaml.safe_load(f) or {}
     except FileNotFoundError:
         data = {}
+    data = _expand_env(data)
     return Config(**data)

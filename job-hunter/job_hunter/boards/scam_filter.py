@@ -1,6 +1,7 @@
 """Scam and unreliable platform filter.
 
-Certain job/gig platforms are known to be unreliable, pay poorly, or areoutright scams.  This module provides:
+Certain job/gig platforms are known to be unreliable, pay poorly, or are
+outright scams. This module provides:
 
 1. ``UNRELIABLE_COMPANIES`` — company names to reject
 2. ``UNRELIABLE_TITLE_PATTERNS`` — title patterns to reject
@@ -50,7 +51,7 @@ UNRELIABLE_TITLE_PATTERNS: list[str] = [
     r"make\s+money\s+(?:fast|online|easy)",
     r"work\s+from\s+home\s+(?:scam|legit|real)",
 
-    # MLMT / Pyramid schemes
+    # MLM / Pyramid schemes
     r"multi[- ]?level\s+marketing",
     r"mlm",
     r"network\s+marketing",

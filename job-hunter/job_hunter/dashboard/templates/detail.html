@@ -2,16 +2,21 @@
 {% block title %}{{ job.title[:50] }} — Job Hunter{% endblock %}
 
 {% block content %}
-<a href="/jobs" style="color: var(--text-muted); font-size: 0.9rem;">← Back to jobs</a>
+<a href="/jobs" style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">← Back to jobs</a>
 
 <div class="detail-header" style="margin-top: 1.5rem;">
+    <div style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap;">
+        <span class="badge badge-board">{{ job.board }}</span>
+        <span class="badge badge-{{ job.status }}">{{ job.status }}</span>
+        {% if job.score %}
+        <span class="score-pill {% if job.score >= 50 %}score-high{% elif job.score >= 20 %}score-mid{% else %}score-low{% endif %}" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+            Fit: {{ job.score }}/100
+        </span>
+        {% endif %}
+    </div>
     <h1>{{ job.title }}</h1>
     <div class="detail-meta">
         {% if job.company %}<span>🏢 {{ job.company }}</span>{% endif %}
-        <span><span class="badge badge-board">{{ job.board }}</span></span>
-        <span><span class="badge badge-{{ job.status }}">{{ job.status }}</span></span>
-    </div>
-    <div class="detail-meta" style="margin-top: 0.75rem;">
         {% if job.location %}<span>📍 {{ job.location }}</span>{% endif %}
         {% if job.remote %}<span>🌍 {{ job.remote }}</span>{% endif %}
         {% if job.posted_at %}<span>📅 {{ job.posted_at[:10] }}</span>{% endif %}
@@ -31,20 +36,34 @@
 
 <!-- Eligibility -->
 {% if job.eligibility_note %}
-<div class="card" style="border-color: var(--green);">
-    <h2 style="color: var(--green); font-size: 0.95rem;">✓ Eligibility</h2>
-    <p>{{ job.eligibility_note }}</p>
+<div class="card" style="border-color: rgba(52,211,153,0.3);">
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span style="color: var(--green); font-weight: 600; font-size: 0.85rem;">✓ Eligible</span>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.9rem;">{{ job.eligibility_note }}</p>
+</div>
+{% endif %}
+
+<!-- Score reasons -->
+{% if job.score_reasons %}
+<div class="card">
+    <div class="card-header">
+        <h2>Fit Score Breakdown</h2>
+    </div>
+    <p style="color: var(--text-secondary); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;">{{ job.score_reasons }}</p>
 </div>
 {% endif %}
 
 <!-- Description -->
 {% if job.description %}
 <div class="card">
-    <h2>Description</h2>
+    <div class="card-header">
+        <h2>Description</h2>
+    </div>
     <div class="detail-body">{{ job.description[:3000] }}</div>
     {% if job.description|length > 3000 %}
-    <p style="color: var(--text-muted); margin-top: 1rem;">
-        ... ({{ job.description|length - 3000 }} more characters)
+    <p style="color: var(--text-muted); margin-top: 1rem; font-size: 0.85rem;">
+        … {{ job.description|length - 3000 }} more characters
     </p>
     {% endif %}
 </div>
@@ -53,10 +72,12 @@
 <!-- Tags -->
 {% if job.tags %}
 <div class="card">
-    <h2>Tags</h2>
-    <div class="tags">
+    <div class="card-header">
+        <h2>Tags</h2>
+    </div>
+    <div class="tags" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
         {% for tag in job.tags.split(',') if tag.strip() %}
-        <span class="badge badge-board" style="margin-right: 0.5rem;">{{ tag.strip() }}</span>
+        <span class="badge badge-board">{{ tag.strip() }}</span>
         {% endfor %}
     </div>
 </div>
@@ -64,7 +85,9 @@
 
 <!-- Metadata -->
 <div class="card">
-    <h2>Metadata</h2>
+    <div class="card-header">
+        <h2>Metadata</h2>
+    </div>
     <table>
         <tr><td style="color: var(--text-muted); width: 150px;">ID</td><td>{{ job.id }}</td></tr>
         <tr><td style="color: var(--text-muted);">Board</td><td>{{ job.board }}</td></tr>
@@ -72,6 +95,9 @@
         <tr><td style="color: var(--text-muted);">Found At</td><td>{{ job.found_at }}</td></tr>
         {% if job.posted_at %}
         <tr><td style="color: var(--text-muted);">Posted At</td><td>{{ job.posted_at }}</td></tr>
+        {% endif %}
+        {% if job.audience %}
+        <tr><td style="color: var(--text-muted);">Audience</td><td>{{ job.audience }}</td></tr>
         {% endif %}
     </table>
 </div>

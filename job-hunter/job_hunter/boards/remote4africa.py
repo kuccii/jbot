@@ -103,12 +103,6 @@ class Remote4AfricaBoard(Board):
             name = (req or {}).get("name")
             if name:
                 countries.append(name)
-        salary = data.get("baseSalary") or {}
-        salary_text = ""
-        if isinstance(salary, dict):
-            value = salary.get("value") or {}
-            if isinstance(value, dict) and value.get("value"):
-                salary_text = f"{value.get('value')} {value.get('currency', '')}".strip()
         desc = BeautifulSoup(
             data.get("description") or "", "html.parser"
         ).get_text(" ", strip=True)[:2000]

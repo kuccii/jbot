@@ -1,17 +1,23 @@
 """CLI for job-hunter.
 
-Run from the job-hunter/ folder:
+Run from the job-hunter/ folder (or anywhere, once installed):
 
-    python -m job_hunter discover   # fetch jobs from enabled boards
-    python -m job_hunter list       # show Rwanda-eligible jobs
-    python -m job_hunter status     # counts per board
-    python -m job_hunter mark 12 applied
-    python -m job_hunter purge hidden
+    job-hunter discover           # fetch jobs from enabled boards, notify
+    job-hunter list                # show eligible jobs, best fit first
+    job-hunter search "ai engineer"
+    job-hunter details 12
+    job-hunter status              # counts per board
+    job-hunter mark 12 applied
+    job-hunter purge hidden
+    job-hunter watch --interval 3600   # discover on a loop
+    job-hunter notify-test         # send a test message to configured channels
+    job-hunter dashboard           # launch the web dashboard
 """
 
 from __future__ import annotations
 
 import sys
+import time
 
 import typer
 
@@ -34,10 +40,15 @@ def _fix_console_encoding() -> None:
 
 
 @app.command()
-def discover():
-    """Fetch jobs from all enabled boards and store Rwanda-eligible ones."""
+def discover(
+    notify: bool = typer.Option(
+        True, "--notify/--no-notify",
+        help="Send a digest of newly found jobs if notifications are configured",
+    ),
+):
+    """Fetch jobs from all enabled boards, score, store, and (optionally) notify."""
     _fix_console_encoding()
-    from job_hunter.orchestrator import run_discover
+    from job_hunter.orchestrator import notify_new_jobs, run_discover
 
     cfg = load_config()
     print(f"Running discovery (boards: {', '.join(n for n, e in cfg.boards.items() if e)})")
@@ -50,6 +61,15 @@ def discover():
     store = _store()
     s = store.stats()
     print(f"\nTotal stored: {s['total']}")
+
+    if notify and cfg.notifications.enabled:
+        notify_results = notify_new_jobs(cfg)
+        if notify_results:
+            print("\nNotifications:")
+            for channel, outcome in notify_results.items():
+                print(f"  {channel}: {outcome}")
+        else:
+            print("\nNo notifications sent (nothing new above min_score).")
 
 
 @app.command()
@@ -66,8 +86,9 @@ def list(
         return
     for r in rows:
         loc = f" | {r['location'][:25]}" if r["location"] else ""
+        fit = f" | fit {r['score']:>3}" if r["score"] else ""
         print(f"[{r['id']:>4}] {r['title'][:55]} @ {r['company'][:22]:<22} "
-              f"| {r['board']:<14}{loc}")
+              f"| {r['board']:<14}{loc}{fit}")
         if r["url"]:
             print(f"       {r['url']}")
 
@@ -111,6 +132,8 @@ def details(job_id: int = typer.Argument(..., help="Job ID")):
     print(f"  URL:        {r['url']}")
     if r['eligibility_note']:
         print(f"  Eligible:   {r['eligibility_note']}")
+    if r['score']:
+        print(f"  Fit score:  {r['score']}/100 ({r['score_reasons']})")
     if r['posted_at']:
         print(f"  Posted:     {r['posted_at']}")
     print(f"  Found:      {r['found_at']}")
@@ -153,6 +176,71 @@ def purge(status: str = typer.Argument("hidden", help="Status to delete (default
     """Delete jobs with the given status."""
     n = _store().purge(status)
     print(f"Deleted {n} {status} job(s)")
+
+
+@app.command()
+def watch(
+    interval: int = typer.Option(3600, "--interval", help="Seconds between discovery runs"),
+    runs: int = typer.Option(0, "--runs", help="Stop after N runs (0 = run forever)"),
+):
+    """Run discovery repeatedly, sleeping `--interval` seconds between runs.
+
+    For a long-lived process (a server, a VPS, a Docker container). For a
+    one-shot cron job, call `job-hunter discover` directly from cron instead.
+    """
+    _fix_console_encoding()
+    from job_hunter.orchestrator import notify_new_jobs, run_discover
+
+    cfg = load_config()
+    count = 0
+    print(f"Watching every {interval}s. Ctrl+C to stop.")
+    try:
+        while True:
+            count += 1
+            print(f"\n=== run {count} ===")
+            results = run_discover(cfg)
+            added = sum(r.get("added", 0) for r in results)
+            errored = [r["board"] for r in results if r["error"]]
+            print(f"  added={added} errors={errored or 'none'}")
+            if cfg.notifications.enabled:
+                notify_results = notify_new_jobs(cfg)
+                if notify_results:
+                    print(f"  notified: {notify_results}")
+            if runs and count >= runs:
+                break
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\nStopped.")
+
+
+@app.command(name="notify-test")
+def notify_test():
+    """Send a fake job to every configured notification channel, to verify setup."""
+    _fix_console_encoding()
+    from datetime import datetime, timezone
+
+    from job_hunter import notifications
+
+    cfg = load_config()
+    if not cfg.notifications.enabled:
+        print("Notifications are disabled. Set notifications.enabled: true in config.yaml.")
+        raise typer.Exit(1)
+
+    fake = {
+        "title": "Test Notification", "company": "job-hunter", "board": "test",
+        "location": "Remote", "score": 100, "url": "https://example.com/test",
+    }
+
+    class _Row(dict):
+        def __getitem__(self, key):
+            return dict.get(self, key, "")
+
+    results = notifications.send_digest([_Row(fake)], cfg.notifications)
+    if not results:
+        print("No channels configured (set telegram_*, webhook_url, or smtp_* in config.yaml).")
+        raise typer.Exit(1)
+    for channel, outcome in results.items():
+        print(f"  {channel}: {outcome}")
 
 
 @app.command()

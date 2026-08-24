@@ -3,240 +3,174 @@
 {% block title %}Platforms — Job Hunter{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 1rem;">Job Platforms & Sources</h1>
-<p style="color: var(--text-muted); margin-bottom: 2rem;">
-    Browse job platforms by audience — find what matches your skills.
-</p>
+<h1>Job Platforms & Sources</h1>
+<p class="subtitle">Browse job platforms by audience — find what matches your skills</p>
 
 <!-- Tabs -->
-<div style="display: flex; gap: 0.5rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; flex-wrap: wrap;">
-    <button class="btn tab-btn active" onclick="showTab('entry')" id="tab-entry">🚀 Entry-Level / Fast Entry</button>
-    <button class="btn tab-btn" onclick="showTab('gigs')" id="tab-gigs">⚡ Gig / AI Training</button>
-    <button class="btn tab-btn" onclick="showTab('creative')" id="tab-creative">🎨 Creative / Marketing</button>
-    <button class="btn tab-btn" onclick="showTab('tech')" id="tab-tech">💻 Tech / Developer</button>
-    <button class="btn tab-btn" onclick="showTab('indeed')" id="tab-indeed">🔍 Indeed Search</button>
+<div class="tabs">
+    <button class="tab-btn active" onclick="showTab('entry')" id="tab-entry">🚀 Entry-Level</button>
+    <button class="tab-btn" onclick="showTab('gigs')" id="tab-gigs">⚡ Gig / AI Training</button>
+    <button class="tab-btn" onclick="showTab('creative')" id="tab-creative">🎨 Creative</button>
+    <button class="tab-btn" onclick="showTab('tech')" id="tab-tech">💻 Tech</button>
+    <button class="tab-btn" onclick="showTab('indeed')" id="tab-indeed">🔍 Indeed</button>
 </div>
 
 <!-- Entry-Level Tab -->
 <div id="tab-content-entry" class="tab-content">
-    <h2 style="margin-bottom: 1rem;">🚀 Entry-Level / Fast Entry Jobs</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        No degree required — these jobs are accessible to anyone with basic computer skills.
-        Virtual assistants, data entry, customer support, and more.
-    </p>
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="color: var(--green); margin-bottom: 0.5rem; font-size: 1rem;">🚀 Entry-Level / Fast Entry Jobs</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">No degree required — accessible to anyone with basic computer skills. Virtual assistants, data entry, customer support, and more.</p>
+    </div>
 
-    <!-- Entry-Level Platforms -->
-    <h3 style="margin-bottom: 1rem;">📋 Platforms to Sign Up</h3>
-    <div class="grid">
+    <h3 style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Platforms to Sign Up</h3>
+    <div class="grid" style="margin-bottom: 2rem;">
         {% for p in entry_platforms %}
         <div class="platform-card">
             <h3>{{ p.title[:50] }}</h3>
-            <div class="tasks">{{ p.description[:150] }}</div>
-            <div class="tags">
+            <div class="tasks">{{ p.description[:120] }}</div>
+            <div class="tags" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem;">
                 {% for tag in p.tags.split(',') if tag.strip() %}
                 <span class="badge badge-board">{{ tag.strip() }}</span>
                 {% endfor %}
             </div>
-            <div class="actions">
-                <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+            <div style="margin-top: auto; padding-top: 0.75rem;">
+                <a href="{{ p.url }}" target="_blank" class="btn btn-primary btn-sm">Sign Up →</a>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Workday / BPO Jobs -->
     {% if workday_jobs %}
-    <h3 style="margin: 2rem 0 1rem;">🏢 Workday / BPO Jobs</h3>
-    <div class="grid">
+    <h3 style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Workday / BPO Jobs</h3>
+    <div class="grid" style="margin-bottom: 2rem;">
         {% for job in workday_jobs %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">{{ job.board }}</span>
-                <span class="badge" style="background: #10b981; color: white;">entry-level</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">{{ job.board }}</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="/jobs/{{ job.id }}">{{ job.title[:55] }}</a></h3>
-            {% if job.company %}
-            <div class="meta">🏢 {{ job.company[:30] }}</div>
-            {% endif %}
+            {% if job.company %}<div class="meta">🏢 {{ job.company[:30] }}</div>{% endif %}
             <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="/jobs/{{ job.id }}" class="btn btn-sm btn-primary">View →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
-    <!-- Indeed Entry-Level -->
     {% if entry_jobs %}
-    <h3 style="margin: 2rem 0 1rem;">🔍 Indeed Entry-Level Jobs</h3>
+    <h3 style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Indeed Entry-Level</h3>
     <div class="grid">
         {% for job in entry_jobs[:20] %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">{{ job.board }}</span>
-                <span class="badge" style="background: #10b981; color: white;">entry-level</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">indeed</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="{{ job.url }}" target="_blank">{{ job.title[:55] }}</a></h3>
             <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">View on Indeed →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
     {% endif %}
 
     {% if not entry_jobs and not entry_platforms and not workday_jobs %}
-    <div class="card" style="text-align: center; padding: 2rem;">
-        <p style="color: var(--text-muted);">No entry-level jobs found yet. Run discovery to fetch more.</p>
-    </div>
+    <div class="empty-state"><div class="icon">📋</div><p>No entry-level jobs found yet. Run discovery to fetch more.</p></div>
     {% endif %}
 </div>
 
-<!-- Gig Platforms Tab -->
+<!-- Gig Tab -->
 <div id="tab-content-gigs" class="tab-content" style="display: none;">
-    <h2 style="margin-bottom: 1rem;">⚡ Gig / AI Training Platforms</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        Sign up, pass the qualification test, and start earning. RLHF, data labeling, and AI training tasks.
-    </p>
-    <div class="grid">
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="color: var(--purple); margin-bottom: 0.5rem; font-size: 1rem;">⚡ Gig / AI Training Platforms</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Sign up, pass the qualification test, and start earning. RLHF, data labeling, and AI training tasks.</p>
+    </div>
+    <div class="grid" style="margin-bottom: 2rem;">
         {% for p in platforms %}
         <div class="platform-card">
             <h3>{{ p.title[:45] }}</h3>
             <div class="tasks">{{ p.description[:120] }}</div>
-            <div class="tags">
+            <div class="tags" style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem;">
                 {% for tag in p.tags.split(',') if tag.strip() %}
                 <span class="badge badge-board">{{ tag.strip() }}</span>
                 {% endfor %}
             </div>
-            <div class="actions">
-                <a href="{{ p.url }}" target="_blank" class="btn btn-primary">Sign Up →</a>
+            <div style="margin-top: auto; padding-top: 0.75rem;">
+                <a href="{{ p.url }}" target="_blank" class="btn btn-primary btn-sm">Sign Up →</a>
             </div>
         </div>
         {% endfor %}
     </div>
 
-    <h2 style="margin: 2rem 0 1rem;">🎯 Recent AI Training Gigs</h2>
+    {% if ai_gigs %}
+    <h3 style="margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Recent AI Training Gigs</h3>
     <div class="grid">
         {% for gig in ai_gigs %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">opentrain</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">opentrain</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="{{ gig.url }}" target="_blank">{{ gig.title[:55] }}</a></h3>
             <div class="meta">🌍 Worldwide · Remote</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="{{ gig.url }}" target="_blank" class="btn btn-sm btn-primary">Apply →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
+    {% endif %}
 </div>
 
 <!-- Creative Tab -->
 <div id="tab-content-creative" class="tab-content" style="display: none;">
-    <h2 style="margin-bottom: 1rem;">🎨 Creative / Marketing Jobs</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        Content writing, graphic design, social media, SEO, and marketing roles.
-    </p>
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="color: var(--yellow); margin-bottom: 0.5rem; font-size: 1rem;">🎨 Creative / Marketing Jobs</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Content writing, graphic design, social media, SEO, and marketing roles.</p>
+    </div>
+    {% if creative_jobs %}
     <div class="grid">
         {% for job in creative_jobs %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">{{ job.board }}</span>
-                <span class="badge" style="background: #f59e0b; color: white;">creative</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">{{ job.board }}</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="/jobs/{{ job.id }}">{{ job.title[:55] }}</a></h3>
-            {% if job.company %}
-            <div class="meta">🏢 {{ job.company[:30] }}</div>
-            {% endif %}
+            {% if job.company %}<div class="meta">🏢 {{ job.company[:30] }}</div>{% endif %}
             <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="/jobs/{{ job.id }}" class="btn btn-sm btn-primary">View →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
-    {% if not creative_jobs %}
-    <div class="card" style="text-align: center; padding: 2rem;">
-        <p style="color: var(--text-muted);">No creative jobs found yet. Run discovery to fetch more.</p>
-    </div>
+    {% else %}
+    <div class="empty-state"><div class="icon">🎨</div><p>No creative jobs found yet.</p></div>
     {% endif %}
 </div>
 
 <!-- Tech Tab -->
 <div id="tab-content-tech" class="tab-content" style="display: none;">
-    <h2 style="margin-bottom: 1rem;">💻 Tech / Developer Jobs</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        Software engineering, data science, ML, DevOps, and other technical roles.
-    </p>
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="color: var(--accent); margin-bottom: 0.5rem; font-size: 1rem;">💻 Tech / Developer Jobs</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Software engineering, data science, ML, DevOps, and other technical roles.</p>
+    </div>
+    {% if tech_jobs %}
     <div class="grid">
         {% for job in tech_jobs %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">{{ job.board }}</span>
-                <span class="badge" style="background: #6366f1; color: white;">tech</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">{{ job.board }}</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="/jobs/{{ job.id }}">{{ job.title[:55] }}</a></h3>
-            {% if job.company %}
-            <div class="meta">🏢 {{ job.company[:30] }}</div>
-            {% endif %}
+            {% if job.company %}<div class="meta">🏢 {{ job.company[:30] }}</div>{% endif %}
             <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="/jobs/{{ job.id }}" class="btn btn-sm btn-primary">View →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
-    {% if not tech_jobs %}
-    <div class="card" style="text-align: center; padding: 2rem;">
-        <p style="color: var(--text-muted);">No tech jobs found yet. Run discovery to fetch more.</p>
-    </div>
+    {% else %}
+    <div class="empty-state"><div class="icon">💻</div><p>No tech jobs found yet.</p></div>
     {% endif %}
 </div>
 
 <!-- Indeed Tab -->
 <div id="tab-content-indeed" class="tab-content" style="display: none;">
-    <h2 style="margin-bottom: 1rem;">🔍 Indeed Search Links</h2>
-    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem;">
-        Pre-built Indeed search links for quick browsing across 19 countries.
-    </p>
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h2 style="color: var(--blue); margin-bottom: 0.5rem; font-size: 1rem;">🔍 Indeed Search Links</h2>
+        <p style="color: var(--text-muted); font-size: 0.85rem;">Pre-built Indeed search links for quick browsing across 19 countries.</p>
+    </div>
+    {% if indeed_jobs %}
     <div class="grid">
         {% for job in indeed_jobs[:20] %}
         <div class="grid-item">
-            <div class="tags">
-                <span class="badge badge-board">indeed</span>
-            </div>
+            <div class="tags"><span class="badge badge-board">indeed</span></div>
             <h3 style="margin-top: 0.5rem;"><a href="{{ job.url }}" target="_blank">{{ job.title[:55] }}</a></h3>
             <div class="meta">🌍 {{ job.location or 'Remote' }}</div>
-            <div class="actions" style="margin-top: 0.75rem;">
-                <a href="{{ job.url }}" target="_blank" class="btn btn-sm btn-primary">View on Indeed →</a>
-            </div>
         </div>
         {% endfor %}
     </div>
+    {% endif %}
 </div>
-
-<style>
-    .tab-btn {
-        min-width: auto;
-        padding: 0.6rem 1.2rem;
-        font-size: 0.85rem;
-    }
-    .tab-btn.active {
-        background: var(--accent);
-        color: white;
-        border-color: var(--accent);
-    }
-    .tab-content {
-        animation: fadeIn 0.3s ease;
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-</style>
 
 <script>
 function showTab(tab) {
@@ -246,8 +180,6 @@ function showTab(tab) {
     document.getElementById(`tab-${tab}`).classList.add('active');
     localStorage.setItem('platformTab', tab);
 }
-
-const savedTab = localStorage.getItem('platformTab') || 'entry';
-showTab(savedTab);
+showTab(localStorage.getItem('platformTab') || 'entry');
 </script>
 {% endblock %}

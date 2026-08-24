@@ -84,14 +84,6 @@ class HimalayasBoard(Board):
         else:
             location = ", ".join(country_codes)
 
-        # Salary info
-        min_sal = item.get("minSalary")
-        max_sal = item.get("maxSalary")
-        currency = item.get("currency", "")
-        salary_text = ""
-        if min_sal and max_sal:
-            salary_text = f"{currency} {min_sal:,.0f}–{max_sal:,.0f}"
-
         # Categories
         categories = item.get("categories") or []
         tags = ", ".join(categories[:5])

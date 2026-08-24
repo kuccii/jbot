@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from job_hunter import eligibility
+from job_hunter import eligibility, scoring
 from job_hunter.boards import BOARDS
 from job_hunter.boards.base import Board
 from job_hunter.boards.remoteok import RemoteOKBoard
@@ -14,6 +14,36 @@ from job_hunter.boards.ats import ATSBoard
 from job_hunter.boards.scam_filter import is_unreliable
 from job_hunter.config import Config
 from job_hunter.models import Job, Store, AUDIENCE_TECH, AUDIENCE_ENTRY, AUDIENCE_GIG
+
+
+def notify_new_jobs(cfg: Config) -> dict:
+    """Send a digest of not-yet-notified eligible jobs, if notifications are
+    configured and enabled. Marks whatever was sent as notified so the next
+    run doesn't repeat it. Returns {} if notifications are off or there's
+    nothing new to send.
+    """
+    if not cfg.notifications.enabled:
+        return {}
+    from job_hunter import notifications
+
+    store = Store(cfg.database)
+    jobs = [
+        j for j in store.unnotified(limit=200)
+        if j["score"] >= cfg.notifications.min_score
+    ]
+    if not jobs:
+        return {}
+    results = notifications.send_digest(jobs, cfg.notifications)
+    if results:
+        store.mark_notified([j["id"] for j in jobs])
+    return results
+
+
+def run_discover_and_notify(cfg: Config) -> tuple[list[dict], dict]:
+    """Run discovery, then send a notification digest for anything new."""
+    results = run_discover(cfg)
+    notify_results = notify_new_jobs(cfg)
+    return results, notify_results
 
 
 # Default audience tags per board. Indeed sets its own per-skill.
@@ -83,7 +113,10 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
         if not job.audience:
             job.audience = _BOARD_AUDIENCE.get(name, AUDIENCE_TECH)
         eligible += 1
-        result = store.add_job(job, ok, note)
+        score, reasons = scoring.score_job(
+            job, cfg.profile.skills, seniority=cfg.profile.seniority
+        )
+        result = store.add_job(job, ok, note, score=score, score_reasons=reasons)
         if result == "new":
             added += 1
         elif result == "duplicate":

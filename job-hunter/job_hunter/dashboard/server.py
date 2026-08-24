@@ -61,13 +61,14 @@ async def jobs_page(
     status: str = Query("", help="Filter by status"),
     search: str = Query("", help="Search keywords"),
     audience: str = Query("", help="Filter by audience"),
+    sort: str = Query("found_at", help="found_at (newest) or score (best fit)"),
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=5, le=100),
 ):
     """Job listing page with filters."""
     conn = _get_db()
     try:
-        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page)
+        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page, sort)
         boards = [r["board"] for r in conn.execute(
             "SELECT DISTINCT board FROM jobs WHERE eligible=1 ORDER BY board"
         ).fetchall()]
@@ -78,7 +79,7 @@ async def jobs_page(
             "page": page,
             "pages": pages,
             "boards": boards,
-            "filters": {"board": board, "status": status, "search": search, "audience": audience},
+            "filters": {"board": board, "status": status, "search": search, "audience": audience, "sort": sort},
         })
     finally:
         conn.close()
@@ -176,13 +177,14 @@ async def api_jobs(
     status: str = "",
     search: str = "",
     audience: str = "",
+    sort: str = "found_at",
     page: int = 1,
     per_page: int = 25,
 ):
     """JSON job listing."""
     conn = _get_db()
     try:
-        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page)
+        jobs, total, pages = _query_jobs(conn, board, status, search, audience, page, per_page, sort)
         return {
             "jobs": [dict(j) for j in jobs],
             "total": total,
@@ -253,6 +255,7 @@ def _query_jobs(
     audience: str,
     page: int,
     per_page: int,
+    sort: str = "found_at",
 ) -> tuple[list, int, int]:
     """Query jobs with filters, return (jobs, total, total_pages)."""
     where = ["eligible=1"]
@@ -273,6 +276,7 @@ def _query_jobs(
         params.extend([q, q, q])
 
     where_clause = " AND ".join(where)
+    order_clause = "score DESC, found_at DESC" if sort == "score" else "found_at DESC"
 
     total = conn.execute(
         f"SELECT COUNT(*) FROM jobs WHERE {where_clause}", params
@@ -281,7 +285,7 @@ def _query_jobs(
 
     offset = (page - 1) * per_page
     jobs = conn.execute(
-        f"SELECT * FROM jobs WHERE {where_clause} ORDER BY found_at DESC LIMIT ? OFFSET ?",
+        f"SELECT * FROM jobs WHERE {where_clause} ORDER BY {order_clause} LIMIT ? OFFSET ?",
         params + [per_page, offset],
     ).fetchall()
 
