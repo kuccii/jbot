@@ -289,6 +289,68 @@ def cleanup(
     print(f"  Final eligible:      {result['final_eligible']}")
 
 
+@app.command(name="sync")
+def sync_db(
+    vps_host: str = typer.Option("", help="VPS hostname/IP"),
+    vps_user: str = typer.Option("root", help="SSH user"),
+    vps_pass: str = typer.Option("", help="SSH password"),
+    vps_path: str = typer.Option("/root/job-hunter/data/jobs.db", help="Remote DB path"),
+    local_db: str = typer.Option("", help="Local DB path (auto-detected if empty)"),
+):
+    """Push local DB to VPS so the dashboard shows fresh data."""
+    try:
+        import paramiko
+    except ImportError:
+        print("Error: pip install paramiko")
+        raise typer.Exit(1)
+
+    cfg = load_config()
+    src = local_db or cfg.database
+    if not Path(src).exists():
+        print(f"Local DB not found: {src}")
+        raise typer.Exit(1)
+
+    if not vps_host:
+        print("Provide --vps-host (e.g. 72.60.188.94)")
+        raise typer.Exit(1)
+    if not vps_pass:
+        print("Provide --vps-pass")
+        raise typer.Exit(1)
+
+    size_mb = Path(src).stat().st_size / (1024 * 1024)
+    print(f"Syncing {src} ({size_mb:.1f} MB) → {vps_user}@{vps_host}:{vps_path}")
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(vps_host, username=vps_user, password=vps_pass, look_for_keys=False)
+    print("Connected to VPS")
+
+    # Stop container to release DB lock
+    print("Stopping container...")
+    ssh.exec_command("docker stop job-hunter")
+    time.sleep(3)
+
+    # Upload
+    print("Uploading DB...")
+    sftp = ssh.open_sftp()
+    sftp.put(src, vps_path)
+    sftp.close()
+
+    # Restart
+    print("Starting container...")
+    ssh.exec_command("docker start job-hunter")
+    time.sleep(5)
+
+    # Verify
+    check_script = f'import sqlite3; c=sqlite3.connect("{vps_path}"); print(c.execute("SELECT COUNT(*) FROM jobs").fetchone()[0])'
+    _, out, _ = ssh.exec_command(f'python3 -c "{check_script}"')
+    count = out.read().decode().strip()
+    print(f"✅ VPS now has {count} jobs")
+
+    ssh.close()
+    print("Done! Open http://{}:8001".format(vps_host))
+
+
 @app.command()
 def dashboard(
     host: str = typer.Option("127.0.0.1", help="Host to bind"),

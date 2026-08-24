@@ -137,17 +137,22 @@ class ProxyManager:
         if self.scrapingbee_key:
             return "managed:scrapingbee"
 
-        # 3. Free proxy lists (fallback)
-        self._refresh_free_proxies()
-        if self._free_proxies:
-            proxy = self._free_proxies[self._free_index % len(self._free_proxies)]
-            self._free_index += 1
-            return proxy
+        # 3. Free proxy lists DISABLED — they are unreliable (~2% success)
+        #    and cause every board to timeout. Use configured APIs only.
+        # self._refresh_free_proxies()
+        # if self._free_proxies:
+        #     proxy = self._free_proxies[self._free_index % len(self._free_proxies)]
+        #     self._free_index += 1
+        #     return proxy
 
         return None
 
     def has_proxy(self) -> bool:
-        """Check if any proxy source is available."""
+        """Check if a *configured* proxy source is available.
+
+        We intentionally exclude free proxy lists — they have ~2% success
+        rate and cause every board to timeout when they fail.
+        """
         return bool(
             self.proxy_url
             or self.scraper_api_key
