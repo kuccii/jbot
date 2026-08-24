@@ -17,6 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from job_hunter.config import load_config
+from job_hunter.models import SCHEMA
 
 app = FastAPI(title="Job Hunter Dashboard", version="1.0.0")
 
@@ -25,10 +26,11 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def _get_db() -> sqlite3.Connection:
-    """Get database connection."""
+    """Get database connection, ensuring tables exist."""
     cfg = load_config()
     conn = sqlite3.connect(cfg.database)
     conn.row_factory = sqlite3.Row
+    conn.executescript(SCHEMA)
     return conn
 
 
