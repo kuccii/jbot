@@ -148,23 +148,23 @@ def _run_board_with_progress(name: str, cfg: Config, result_queue: queue.Queue) 
     result_queue.put({"board": name, "status": "fetching", "fetched": 0, "eligible": 0, "added": 0})
 
     try:
-        # Create board
+        # Create board from registry
+        from job_hunter.boards import BOARDS
         if name == "remoteok":
             board = RemoteOKBoard(tags=cfg.keywords)
         elif name == "ats":
             board = ATSBoard(companies=[c.model_dump() for c in cfg.ats_companies])
+        elif name in BOARDS:
+            board = BOARDS[name]()
         else:
-            cls = getattr(job_hunter.boards, name.replace("-", "_"), None)
-            if hasattr(job_hunter.boards, "BOARDS") and name in job_hunter.boards.BOARDS:
-                board = job_hunter.boards.BOARDS[name]()
-            else:
-                result_queue.put({"board": name, "status": "error", "error": f"No board class: {name}"})
-                return
+            result_queue.put({"board": name, "status": "error", "error": f"No board class: {name}"})
+            return
 
         # Report: fetching
         result_queue.put({"board": name, "status": "fetching", "fetched": 0, "eligible": 0, "added": 0})
 
-        jobs = board.fetch(limit=cfg.max_jobs_per_board) if asyncio.iscoroutinefunction(getattr(board, 'fetch', None)) else asyncio.run(board.fetch(limit=cfg.max_jobs_per_board))
+        # All board fetch() methods are async — run in a fresh event loop for this thread
+        jobs = asyncio.run(board.fetch(limit=cfg.max_jobs_per_board))
 
         result_queue.put({"board": name, "status": "filtering", "fetched": len(jobs), "eligible": 0, "added": 0})
 
