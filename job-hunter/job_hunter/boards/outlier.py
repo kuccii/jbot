@@ -31,10 +31,9 @@ APPLY_BASE = "https://app.outlier.ai"
 # Regional languages: Kiswahili (East African Community).
 # Additional: Hindi/Urdu has a large diaspora in East Africa.
 RELEVANT_LANG_CODES = {
-    "en", "en-gb", "en-us", "en-au", "en-in",
+    "en", "en-gb", "en-us", "en-au",
     "fr", "fr-fr", "fr-be", "fr-ca",
     "sw", "sw-ke", "sw-tz",  # Kiswahili
-    "hi", "hi-in",  # Hindi
     "rw",  # Kinyarwanda
 }
 
@@ -62,7 +61,8 @@ REJECT_TITLE_PATTERNS = [
     r"law-sgp",
 ]
 
-# Non-English languages that Rwandans typically don't speak.
+# Languages that Rwandans typically don't speak.
+# Only English, French, and Kiswahili are relevant for Rwanda.
 NON_RELEVANT_LANGUAGES = {
     # European
     "danish", "finnish", "flemish", "norwegian", "swedish",
@@ -75,8 +75,8 @@ NON_RELEVANT_LANGUAGES = {
     "japanese", "korean", "chinese", "mandarin", "cantonese",
     # Southeast Asian
     "thai", "vietnamese", "indonesian", "malay", "filipino", "tagalog",
-    # South Asian (except Hindi which has East African diaspora)
-    "bengali", "tamil", "telugu", "marathi", "gujarati",
+    # South Asian
+    "hindi", "bengali", "tamil", "telugu", "marathi", "gujarati",
     "punjabi", "urdu", "kannada",
     # Middle Eastern
     "arabic", "hebrew", "persian",
