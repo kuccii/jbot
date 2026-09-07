@@ -39,7 +39,7 @@ SEARXNG_MAX_PAGES = 1  # one page per query (each ~ 20-40 results)
 # low concurrency + a small delay between pages/queries.
 SEARXNG_CONCURRENCY = 2
 SEARXNG_PAGE_DELAY = 1.0   # seconds between pages of one query
-SEARXNG_QUERY_DELAY = 1.5  # seconds between queries in a board
+SEARXNG_QUERY_DELAY = 2.5  # seconds between queries in a board
 
 
 def _searxng_url() -> str:
@@ -135,6 +135,67 @@ class SearxSearchBoard(Board):
         "usavisa.com", "germany-visa.org", "ukimmigration.com",
     }
 
+    def _extra_queries(self) -> list[str]:
+        """Board-specific queries appended from config (websearch.extra_queries).
+
+        Lets users extend searches without touching code:
+
+            websearch:
+              extra_queries:
+                indeed_search: ["site:indeed.com/viewjob \"remote data entry\" \"entry level\""]
+        """
+        extra: list[str] = []
+        try:
+            from job_hunter.config import load_config
+            extra = (load_config().websearch.extra_queries or {}).get(self.name, [])
+        except Exception:
+            pass
+        return [q for q in extra if isinstance(q, str) and q.strip()]
+
+    def _queries(self) -> list[str]:
+        """All queries for this board: built-ins + config extras, de-duped."""
+        queries = list(self.QUERIES) + self._extra_queries()
+        seen: set[str] = set()
+        unique = []
+        for q in queries:
+            if q not in seen:
+                seen.add(q)
+                unique.append(q)
+        return unique
+
+    def _queries_per_run(self) -> int:
+        """Max queries to run in a single fetch.
+
+        SearXNG sits on a datacenter IP: search engines suspend it after a
+        burst (~10-25 rapid queries). We keep a large pool of queries but
+        sample a rotating subset each run, so a discovery adds fresh jobs
+        without tripping rate limits, and later runs cover the rest.
+
+        Tunable via config: websearch.queries_per_run (default 12).
+        """
+        try:
+            from job_hunter.config import load_config
+            n = load_config().websearch.queries_per_run
+            if n and n > 0:
+                return int(n)
+        except Exception:
+            pass
+        return 12
+
+    def _active_queries(self) -> list[str]:
+        """Random rotating subset of queries for this run.
+
+        A discovery run picks a different random sample each time, so the
+        full pool gets covered across runs while each run stays under the
+        datacenter-IP burst limit.
+        """
+        import random
+        all_q = self._queries()
+        n = self._queries_per_run()
+        if len(all_q) <= n:
+            return all_q
+        return random.sample(all_q, min(n, len(all_q)))
+
     async def fetch(self, limit: int = 500) -> list[Job]:
         jobs: list[Job] = []
         seen_urls: set[str] = set()
@@ -163,7 +224,7 @@ class SearxSearchBoard(Board):
                 jobs.append(job)
 
         async with self.client() as client:
-            await asyncio.gather(*(_run_query(client, q) for q in self.QUERIES))
+            await asyncio.gather(*(_run_query(client, q) for q in self._active_queries()))
 
         return jobs
 
@@ -180,24 +241,63 @@ INDEED_DOMAIN_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Role phrases -> audience tag for the resulting jobs.
-INDEED_ROLE_QUERIES: list[str] = [
-    'site:indeed.com/viewjob "remote data entry"',
-    'site:indeed.com/viewjob "remote virtual assistant"',
-    'site:indeed.com/viewjob "remote customer support"',
-    'site:indeed.com/viewjob "remote admin assistant"',
-    'site:indeed.com/viewjob "remote transcription"',
-    'site:indeed.com/viewjob "remote bookkeeper"',
-    'site:indeed.com/viewjob "remote IT support"',
-    'site:indeed.com/viewjob "remote chat support"',
-    'site:indeed.com/viewjob "remote call center"',
-    # European Indeed country domains (user request: target European Indeed)
-    'site:www.indeed.co.uk "remote" "data entry" OR "customer support"',
-    'site:www.indeed.de "remote" "data entry" OR "customer support"',
-    'site:www.indeed.fr "remote" "data entry" OR "customer support"',
-    'site:www.indeed.ie "remote" "customer support" OR "virtual assistant"',
-    'site:www.indeed.nl "remote" "data entry" OR "customer support"',
+# Entry-level / fast-start roles that a Rwandan can realistically do
+# remotely. Each gets a site-scoped query against the Indeed index.
+INDEED_ROLE_PHRASES: list[str] = [
+    "data entry",
+    "virtual assistant",
+    "customer support",
+    "customer service",
+    "admin assistant",
+    "administrative assistant",
+    "transcription",
+    "transcriber",
+    "bookkeeper",
+    "IT support",
+    "technical support",
+    "help desk",
+    "chat support",
+    "call center",
+    "data analyst",
+    "proofreader",
+    "copywriter",
+    "content writer",
+    "social media",
+    "search engine evaluator",
+    "online tutor",
+    "english teacher",
+    "medical billing",
+    "medical coding",
+    "scheduler",
+    "dispatcher",
+    "recruiter",
+    "sales representative",
+    "appointment setter",
+    "web researcher",
+    "data annotation",
 ]
+
+# All working Indeed country TLDs + their subdomain (from indeed.py).
+INDEED_DOMAINS: list[str] = [
+    # Europe
+    "www.indeed.co.uk", "www.indeed.de", "www.indeed.nl", "www.indeed.ie",
+    "www.indeed.fr", "www.indeed.be", "www.indeed.cz", "www.indeed.hu",
+    "www.indeed.no", "www.indeed.fi", "www.indeed.pt", "www.indeed.es",
+    "www.indeed.ch", "www.indeed.it", "www.indeed.se", "www.indeed.pl",
+    "www.indeed.at", "www.indeed.dk", "www.indeed.lu",
+    # Americas + APAC + Africa
+    "www.indeed.com", "www.indeed.ca", "www.indeed.com.au", "www.indeed.sg",
+    "www.indeed.co.in", "www.indeed.co.za",
+]
+
+# Queries: main site for every role + country sites for the top roles.
+# Kept bounded so a full run stays under ~60 SearXNG requests.
+INDEED_ROLE_QUERIES: list[str] = []
+for _phrase in INDEED_ROLE_PHRASES:
+    INDEED_ROLE_QUERIES.append(f'site:indeed.com/viewjob "remote {_phrase}"')
+for _dom in ["www.indeed.co.uk", "www.indeed.de", "www.indeed.ie", "www.indeed.nl"]:
+    INDEED_ROLE_QUERIES.append(f'site:{_dom}/viewjob "remote" "data entry" OR "customer support" OR "virtual assistant" OR "admin" OR "IT support"')
+
 
 # Phrases that indicate the role is truly remote + location-flexible.
 REMOTE_FLEX_SIGNALS = re.compile(
@@ -230,7 +330,17 @@ LOCAL_ANCHORS = re.compile(
     r"australia|sydney|melbourne|new zealand|canada|usa|u\.?s\.?a|united states|"
     r"united kingdom|uk|england|ireland|poland|germany|france|netherlands|holland|"
     r"belgium|switzerland|austria|italy|spain|portugal|denmark|sweden|norway|"
-    r"finland|ukraine|poland|czech|hungary|romania|\u0645\u0635\u0631)\b",
+    r"finland|ukraine|poland|czech|hungary|romania|california|texas|florida|outram|\u0645\u0635\u0631)\b",
+    re.IGNORECASE,
+)
+# Bilingual / non-English language requirements in the title that make a
+# posting useless to a Rwandan (e.g. "(Chinese Speaker)", "German Speaking").
+LANGUAGE_BARRIER_TITLE = re.compile(
+    r"\b(chinese|mandarin|cantonese|japanese|korean|vietnamese|thai|arabic|hebrew|"
+    r"turkish|russian|polish|czech|hungarian|romanian|bulgarian|dutch|swedish|"
+    r"norwegian|danish|finnish|greek|ukrainian|hindi|urdu|tamil|telugu|malay|"
+    r"indonesian|filipino|tagalog|german|french|italian|spanish|portuguese)\s*"
+    r"(speaker|speaking|fluent|language)\b",
     re.IGNORECASE,
 )
 
@@ -249,9 +359,6 @@ class IndeedSearchBoard(SearxSearchBoard):
     label = "Indeed via Web Search (real viewjob links)"
 
     QUERIES = INDEED_ROLE_QUERIES
-
-    async def fetch(self, limit: int = 500) -> list[Job]:
-        return await super().fetch(limit=limit)
 
     def _result_to_job(self, result: dict) -> Job | None:
         url = _clean(result.get("url"))
@@ -288,6 +395,10 @@ class IndeedSearchBoard(SearxSearchBoard):
         # Country/city anchor in the title means local-only remote, unless a
         # worldwide signal is present in title+snippet.
         if LOCAL_ANCHORS.search(title) and not WORLDWIDE_SIGNALS.search(low):
+            return None
+        # A non-English language requirement makes the role unusable for a
+        # Rwandan without that language (e.g. "Chinese Speaker").
+        if LANGUAGE_BARRIER_TITLE.search(title) and not WORLDWIDE_SIGNALS.search(low):
             return None
 
         # Work-authorization / country restrictions that exclude non-US etc.
@@ -330,20 +441,42 @@ class IndeedSearchBoard(SearxSearchBoard):
 # ═══════════════════════════════════════════════════════════════════════
 
 VISA_QUERIES: list[str] = [
+    # ── ATS host-scoped ──────────────────────────────────────────────────
     'site:boards.greenhouse.io "visa sponsorship" OR "relocation support"',
     'site:job-boards.greenhouse.io "visa sponsorship"',
+    'site:boards.greenhouse.io "sponsorship available" OR "we will sponsor"',
+    'site:boards.greenhouse.io "relocation package"',
     'site:jobs.ashbyhq.com "visa sponsorship" OR "sponsorship"',
     'site:jobs.lever.co "visa sponsorship" OR "relocation"',
     'site:jobs.smartrecruiters.com "visa sponsorship" OR "relocation support"',
+    'site:careers.smartrecruiters.com "visa sponsorship"',
+    'site:startup.jobs "visa sponsorship"',
+    'site:apply.workable.com "visa sponsorship" OR "relocation"',
+    'site:careers-personio.com "visa sponsorship" OR "relocation support"',
+    'site:recruitee.com "visa sponsorship" OR "relocation support"',
+    # ── Role-targeted (remote + sponsorship) ────────────────────────────
     '"visa sponsorship" remote customer service job',
+    '"visa sponsorship" remote customer support',
     '"visa sponsorship" remote data entry job',
     '"visa sponsorship" remote virtual assistant',
-    '"visa sponsorship" english speaking remote europe',
+    '"visa sponsorship" remote administrative assistant',
+    '"visa sponsorship" remote bookkeeper',
+    '"visa sponsorship" remote IT support OR help desk',
+    '"visa sponsorship" remote technical support',
+    '"visa sponsorship" remote sales OR account manager',
+    '"visa sponsorship" remote recruiter OR HR',
+    '"visa sponsorship" remote nurse OR healthcare',
+    '"visa sponsorship" remote english teacher OR tutor',
+    '"visa sponsorship" remote data analyst OR researcher',
+    '"visa sponsorship" remote software developer OR engineer',
+    # ── Wording variants ────────────────────────────────────────────────
     '"we sponsor visas" OR "we will sponsor" remote job',
     '"sponsorship available" "remote" data entry OR customer support',
     '"relocation support" OR "relocation package" remote entry level',
-    'site:startup.jobs "visa sponsorship"',
     '"work permit sponsorship" remote entry level',
+    '"visa sponsorship available" english speaking remote',
+    '"visa sponsorship" europe remote english speaking entry level',
+    'site:indeed.com/viewjob "visa sponsorship" OR "relocation package"',
 ]
 
 # Only keep result pages that look like actual job postings on a real
@@ -353,6 +486,7 @@ VISA_JOB_URL_RE = re.compile(
     r"[a-z0-9-]*\.?(?:greenhouse\.io|ashbyhq\.com|lever\.co|smartrecruiters\.com"
     r"|workable\.com|bamboohr\.com|jobvite\.com|workday\.com|recruitee\.com"
     r"|teamtailor\.com|personio\.com|join\.com|startup\.jobs|remoteok\.com|remotive\.com)"
+    r"|(?:[a-z0-9-]+\.)*breezy\.hr"  # Breezy HR career pages
     r"|(?:[a-z0-9-]+\.)*indeed\.(?:com|co\.uk|de|fr|nl|ie|es|it|pl|se|ch|at|pt|no|dk|fi|be|ca|com\.au|sg|co\.in|co\.za)/viewjob\?jk=[0-9A-Za-z]+"
     r")",
     re.IGNORECASE,

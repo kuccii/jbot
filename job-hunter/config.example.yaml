@@ -70,8 +70,22 @@ max_jobs_per_board: 9999  # No limit — scrape everything
 
 # Self-hosted SearXNG instance used by the web-search boards
 # (indeed_search, visa_sponsorship). Override with SEARXNG_URL env var.
+#
+# extra_queries lets you add searches per board without touching code:
+#   extra_queries:
+#     indeed_search:
+#       - 'site:indeed.com/viewjob "remote data entry" "entry level"'
+#     visa_sponsorship:
+#       - '"visa sponsorship" remote "content moderator"'
+#
+# queries_per_run caps how many searches each board fires per discovery.
+# SearXNG runs on the VPS (datacenter IP), and search engines suspend the
+# IP after a burst of ~10-25 rapid queries — the boards pick a random
+# subset each run so you cover the full pool over several runs instead of
+# tripping rate limits in one.
 websearch:
   url: "http://72.60.188.94:50361"
+  queries_per_run: 12
 
 # Optional: get pinged when new eligible jobs are found. Every channel
 # below is independent and best-effort — configure any subset of them.

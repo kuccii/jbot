@@ -206,8 +206,21 @@ class SearchConfig(BaseModel):
 
     Powers ``indeed_search`` (real Indeed viewjob links) and
     ``visa_sponsorship`` (employers offering visa sponsorship).
+
+    ``extra_queries`` lets you add more searches without code:
+
+        websearch:
+          url: "http://72.60.188.94:50361"
+          extra_queries:
+            indeed_search: ["site:indeed.com/viewjob \"remote data entry\" \"entry level\""]
+            visa_sponsorship: ["\"visa sponsorship\" remote nurse"]
     """
     url: str = "http://72.60.188.94:50361"
+    extra_queries: dict[str, list[str]] = Field(default_factory=dict)
+    # Max SearXNG queries each web-search board runs per discovery. SearXNG
+    # is on a datacenter IP — engines suspend it after a burst — so boards
+    # sample a random subset per run. Lower it if you still get empty runs.
+    queries_per_run: int = 12
 
 
 class Config(BaseModel):
