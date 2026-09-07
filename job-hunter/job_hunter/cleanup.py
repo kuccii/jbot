@@ -66,7 +66,12 @@ def recheck_eligibility(db_path: str) -> dict:
 
     for row in jobs:
         job = _row_to_job(row)
-        ok, note = eligibility.check_eligibility(job)
+        # Visa-sponsorship postings are judged by the sponsor-based rule;
+        # location-based rules would wrongly purge them (empty location).
+        if row["board"] == "visa_sponsorship":
+            ok, note = eligibility.check_visa_sponsorship(job)
+        else:
+            ok, note = eligibility.check_eligibility(job)
 
         if not ok:
             # Remove the job

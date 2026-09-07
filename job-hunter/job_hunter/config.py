@@ -201,6 +201,15 @@ class ProxyConfig(BaseModel):
     ])
 
 
+class SearchConfig(BaseModel):
+    """Self-hosted SearXNG instance used for web-search boards.
+
+    Powers ``indeed_search`` (real Indeed viewjob links) and
+    ``visa_sponsorship`` (employers offering visa sponsorship).
+    """
+    url: str = "http://72.60.188.94:50361"
+
+
 class Config(BaseModel):
     profile: ProfileConfig = Field(default_factory=ProfileConfig)
     boards: dict[str, bool] = Field(default_factory=lambda: {
@@ -226,6 +235,8 @@ class Config(BaseModel):
         "indeed_entry": True,
         "wwr_entry": True,
         "weworkremotely": False,  # unreliable (403s from datacenter IPs)
+        "indeed_search": True,        # real Indeed viewjob links via SearXNG
+        "visa_sponsorship": True,     # employers offering visa sponsorship
     })
     keywords: list[str] = Field(default_factory=list)
     ats_companies: list[ATSCompanyConfig] = Field(
@@ -235,6 +246,7 @@ class Config(BaseModel):
     max_jobs_per_board: int = 9999  # No limit — scrape everything
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     proxy: ProxyConfig = Field(default_factory=ProxyConfig)
+    websearch: SearchConfig = Field(default_factory=SearchConfig)
 
 
 def load_config(config_path: str | None = None) -> Config:

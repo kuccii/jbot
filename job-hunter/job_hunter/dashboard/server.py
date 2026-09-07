@@ -76,6 +76,9 @@ BOARD_REGISTRY: dict[str, dict] = {
     "trulyremote":    {"category": "spa",       "audience": "tech",    "speed": "slow",   "cost": "free",  "reliability": "low",    "desc": "Pre-screened remote (JS-rendered)"},
     # ── Extra ──────────────────────────────────────────────────────────────
     "weworkremotely": {"category": "remote",    "audience": "tech",    "speed": "medium", "cost": "free",  "reliability": "low",    "desc": "WeWorkRemotely (403 from datacenter)"},
+    # ── Web-Search powered (SearXNG on VPS) ────────────────────────────────
+    "indeed_search":  {"category": "search",    "audience": "entry",   "speed": "slow",   "cost": "free",  "reliability": "high",   "desc": "Indeed real viewjob links via SearXNG web search"},
+    "visa_sponsorship": {"category": "search",  "audience": "visa",    "speed": "slow",   "cost": "free",  "reliability": "medium", "desc": "Employers offering visa sponsorship / relocation"},
 }
 
 # Preset modes
@@ -142,6 +145,8 @@ def _run_board_with_progress(name: str, cfg: Config, result_queue: queue.Queue) 
         "meetfrank": AUDIENCE_TECH, "workday": AUDIENCE_ENTRY,
         "entry_platforms": AUDIENCE_ENTRY, "indeed_entry": AUDIENCE_ENTRY,
         "wwr_entry": AUDIENCE_ENTRY,
+        "indeed_search": AUDIENCE_ENTRY,
+        "visa_sponsorship": AUDIENCE_ENTRY,
     }
 
     # Report: starting
@@ -177,7 +182,10 @@ def _run_board_with_progress(name: str, cfg: Config, result_queue: queue.Queue) 
             if is_bad:
                 unreliable += 1
                 continue
-            ok, note = eligibility.check_eligibility(job)
+            if name == "visa_sponsorship":
+                ok, note = eligibility.check_visa_sponsorship(job)
+            else:
+                ok, note = eligibility.check_eligibility(job)
             if not ok:
                 continue
             if not eligibility.matches_keywords(job, cfg.keywords):
@@ -283,7 +291,7 @@ async def home(request: Request):
         stats = _get_stats(conn)
         recent = conn.execute(
             """SELECT * FROM jobs WHERE eligible=1
-               ORDER BY CASE WHEN audience='entry' THEN 0 WHEN audience='gig' THEN 1 ELSE 2 END,
+               ORDER BY CASE WHEN audience='entry' THEN 0 WHEN audience='visa' THEN 1 WHEN audience='gig' THEN 2 WHEN audience='creative' THEN 3 ELSE 4 END,
                score DESC, found_at DESC LIMIT 12"""
         ).fetchall()
         return templates.TemplateResponse(request, "home.html", {
@@ -581,7 +589,7 @@ def _query_jobs(
     elif sort == "found_at":
         order_clause = "found_at DESC"
     else:  # entry_first (default)
-        order_clause = "CASE WHEN audience='entry' THEN 0 WHEN audience='gig' THEN 1 WHEN audience='creative' THEN 2 ELSE 3 END, score DESC, found_at DESC"
+        order_clause = "CASE WHEN audience='entry' THEN 0 WHEN audience='visa' THEN 1 WHEN audience='gig' THEN 2 WHEN audience='creative' THEN 3 ELSE 4 END, score DESC, found_at DESC"
 
     total = conn.execute(
         f"SELECT COUNT(*) FROM jobs WHERE {where_clause}", params

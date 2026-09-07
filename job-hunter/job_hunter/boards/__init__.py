@@ -28,6 +28,7 @@ from job_hunter.boards.alignerr import AlignerrBoard
 from job_hunter.boards.outlier import OutlierBoard
 from job_hunter.boards.indeed_entry import IndeedEntryBoard
 from job_hunter.boards.wwr_entry import WWREntryBoard
+from job_hunter.boards.searx_search import IndeedSearchBoard, VisaSponsorshipBoard
 
 # Board name -> class mapping. The orchestrator instantiates these with
 # per-run config (e.g. RemoteOKBoard needs keyword tags, ATSBoard needs
@@ -56,4 +57,6 @@ BOARDS: dict[str, type[Board]] = {
     "alignerr": AlignerrBoard,
     "outlier": OutlierBoard,
     "wwr_entry": WWREntryBoard,
+    "indeed_search": IndeedSearchBoard,
+    "visa_sponsorship": VisaSponsorshipBoard,
 }

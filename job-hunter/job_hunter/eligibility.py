@@ -244,6 +244,50 @@ def _has_description_restrictions(description: str) -> str | None:
     return None
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Visa-sponsorship eligibility (employer sponsors work visa / relocation)
+# ═══════════════════════════════════════════════════════════════════════
+
+# Positive: the employer explicitly offers visa sponsorship or relocation
+# support, which is what makes a location-specific posting accessible to
+# someone in Rwanda/Kenya — the employer moves you there.
+VISA_POSITIVE = re.compile(
+    r"visa sponsorship|visa sponsor(ed|ing|s)?|sponsor(ed|ing|s)? (work )?(visa|permit)|"
+    r"visa (is )?(provided|offered|available|support)|work permit sponsorship|"
+    r"relocation (package|support|assistance|help)|sponsorship (is )?available|"
+    r"we (offer|provide|will) sponsor|willing to sponsor|able to sponsor|"
+    r"employment visa|sponsor our visa|sponsor the visa|sponsor visas?",
+    re.IGNORECASE,
+)
+
+# Negative: posting explicitly rules out sponsorship.
+VISA_NEGATIVE = re.compile(
+    r"cannot sponsor|can'?t sponsor|no (visa )?sponsorship|do(es)? not sponsor|"
+    r"unable to sponsor|not able to sponsor|without sponsorship|sponsorship is not|"
+    r"we (do )?not offer|does not offer|doesn'?t sponsor|no relocation|"
+    r"visa sponsorship is not|cannot provide (visa )?sponsorship|no work permit",
+    re.IGNORECASE,
+)
+
+
+def check_visa_sponsorship(job: Job) -> tuple[bool, str]:
+    """Eligibility for visa-sponsorship postings.
+
+    These jobs sponsor a work visa / relocation for candidates abroad, so
+    the usual "you must already be in country X" rule doesn't apply — the
+    employer handles the move. Only the ``visa_sponsorship`` board uses
+    this check, and only when the posting explicitly says it sponsors.
+    """
+    if job.board != "visa_sponsorship":
+        return False, "not a visa-sponsorship listing"
+    text = " ".join([job.title, job.tags, job.description]).lower()
+    if VISA_NEGATIVE.search(text):
+        return False, "sponsorship explicitly not available"
+    if not VISA_POSITIVE.search(text):
+        return False, "no visa sponsorship signal"
+    return True, "employer offers visa sponsorship / relocation"
+
+
 def check_eligibility(job: Job) -> tuple[bool, str]:
     """Return (eligible, reason)."""
 

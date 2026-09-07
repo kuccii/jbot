@@ -129,9 +129,13 @@ async def _run_board(name: str, store: Store, cfg: Config) -> dict:
             unreliable += 1
             continue
 
-        ok, note = eligibility.check_eligibility(job)
+        # Visa-sponsorship board uses the sponsor-based check, not location.
+        if name == "visa_sponsorship":
+            ok, note = eligibility.check_visa_sponsorship(job)
+        else:
+            ok, note = eligibility.check_eligibility(job)
         if not ok:
-            continue  # store only Rwanda-eligible roles
+            continue  # store only eligible roles
         if not eligibility.matches_keywords(job, cfg.keywords):
             continue
         # Auto-tag audience if the board didn't set one

@@ -58,9 +58,20 @@ boards:
   indeed_entry: true
   wwr_entry: true
   weworkremotely: false  # unreliable — 403s from datacenter IPs
+  # Web-search boards — powered by the self-hosted SearXNG instance below.
+  # Indeed blocks direct scraping; these query SearXNG for real viewjob
+  # links instead. Visa-sponsorship posts are ones where the employer
+  # explicitly offers to sponsor a work visa / relocation.
+  indeed_search: true
+  visa_sponsorship: true
 
 database: "data/jobs.db"
 max_jobs_per_board: 9999  # No limit — scrape everything
+
+# Self-hosted SearXNG instance used by the web-search boards
+# (indeed_search, visa_sponsorship). Override with SEARXNG_URL env var.
+websearch:
+  url: "http://72.60.188.94:50361"
 
 # Optional: get pinged when new eligible jobs are found. Every channel
 # below is independent and best-effort — configure any subset of them.
