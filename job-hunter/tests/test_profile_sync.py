@@ -47,3 +47,5 @@ def test_replace_profile_block_handles_eof():
     cfg = "boards:\n  remoteok: true\nprofile:\n  name: x\n"
     out = profile_sync.replace_profile_block(cfg, {"name": "Y"})
     assert out.rstrip().endswith("name: Y")
+    assert "name: x" not in out
+    assert out.count("profile:") == 1

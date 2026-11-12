@@ -19,7 +19,7 @@ SKILL_EXPANSIONS: dict[str, list[str]] = {
     "project management": ["project management", "project manager"],
 }
 
-_PROFILE_BLOCK_RE = re.compile(r"(?ms)^profile:.*?(?=^\S)")
+_PROFILE_BLOCK_RE = re.compile(r"(?ms)^profile:.*?(?=^\S|\Z)")
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.strip().lower())
