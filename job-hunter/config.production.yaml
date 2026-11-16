@@ -1,0 +1,113 @@
+# job-hunter production configuration.
+
+profile:
+  name: Patrick Hirwa
+  email: impatrickhi@gmail.com
+  location: Rwanda
+  seniority: mid
+  skills:
+  - agile
+  - ai
+  - ai / automation specialist
+  - analytics
+  - api
+  - automation
+  - aws
+  - azure
+  - ci/cd
+  - cloud
+  - database
+  - devops
+  - docker
+  - gcp
+  - javascript
+  - kpi
+  - kubernetes
+  - llm
+  - machine learning
+  - metrics
+  - mobile
+  - postgresql
+  - prioritization
+  - product management
+  - product manager
+  - project management
+  - project manager
+  - prompt
+  - python
+  - react
+  - resource planning
+  - roadmap
+  - scrum
+  - software engineer
+  - sql
+  - web
+keywords: []
+
+boards:
+  remoteok: true
+  remote4africa: true
+  himalayas: true
+  remotive: true
+  jobicy: true
+  workingnomads: true
+  persona: true
+  ats: true
+  arc: true
+  foundthejob: true
+  dynamitejobs: true
+  trulyremote: true
+  startupjobs: true
+  meetfrank: true
+  workday: true
+  entry_platforms: true
+  indeed_entry: true
+  wwr_entry: true
+  indeed_search: true
+  visa_sponsorship: true
+  gig_platforms: true
+  opentrain: true
+  alignerr: true
+  outlier: true
+  indeed: false            # broad, low-reliability, wrong-country heavy
+  weworkremotely: false    # 403s from datacenter IPs
+
+database: "data/jobs.db"
+max_jobs_per_board: 9999
+
+websearch:
+  url: "http://72.60.188.94:50361"
+  queries_per_run: 12
+
+notifications:
+  enabled: false
+  telegram_bot_token: "${TELEGRAM_BOT_TOKEN}"
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"
+  webhook_url: "${JOB_HUNTER_WEBHOOK_URL}"
+  smtp_host: ""
+  smtp_port: 587
+  smtp_user: "${SMTP_USER}"
+  smtp_password: "${SMTP_PASSWORD}"
+  smtp_from: "job-hunter@example.com"
+  smtp_to: "you@example.com"
+  smtp_use_tls: true
+  min_score: 20
+
+proxy:
+  zenrows_key: "${ZENROWS_KEY}"
+  scrapedo_token: "${SCRAPEDO_TOKEN}"
+  scrapfly_key: "${SCRAPFLY_KEY}"
+  scraperapi_key: "${SCRAPERAPI_KEY}"
+  scrapingbee_key: "${SCRAPINGBEE_KEY}"
+  proxy_url: ""
+  force_proxy_boards:
+    - indeed
+    - indeed_entry
+    - workday
+    - startupjobs
+    - meetfrank
+    - dynamitejobs
+    - trulyremote
+    - wwr_entry
+
+wage_floor_usd_per_hour: 4.0
