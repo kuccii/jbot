@@ -60,7 +60,6 @@ boards:
   startupjobs: true
   meetfrank: true
   workday: true
-  entry_platforms: true
   indeed_entry: true
   wwr_entry: true
   indeed_search: true

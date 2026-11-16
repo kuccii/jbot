@@ -24,78 +24,58 @@
         <h2>Discovery</h2>
         <p>Run the job discovery pipeline to scan boards and store eligible jobs.</p>
         <button class="btn btn-discovery" id="btn-discovery">Run Discovery</button>
-        <div class="status" id="disc-status"><span class="endpoint">POST /job-hunter/run</span></div>
+        <div class="status" id="disc-status"><span class="endpoint">POST /api/discover</span></div>
 
         <h2>Cleanup & Reclassify</h2>
         <p>Re-evaluate all stored jobs with current rules and update status.</p>
         <button class="btn btn-cleanup" id="btn-cleanup">Run Cleanup</button>
-        <div class="status" id="clean-status"><span class="endpoint">POST /job-hunter/cleanup</span></div>
+        <div class="status" id="clean-status"><span class="endpoint">POST /api/cleanup</span></div>
 
         <h2>Status</h2>
         <p>Service status check.</p>
         <button class="btn btn-info" id="btn-status" onclick="checkStatus()">Check Status</button>
-        <div class="status" id="status-div"><span class="endpoint">GET /job-hunter/health</span></div>
-    </body>
+        <div class="status" id="status-div"><span class="endpoint">GET /api/stats</span></div>
+    </div>
 
     <script>
         const BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://127.0.0.1:8000'
-            : 'https://n8n.qivook.com';
+            ? 'http://127.0.0.1:8000' : 'https://n8n.qivook.com';
 
         document.getElementById('btn-discovery').addEventListener('click', async () => {
             const btn = document.getElementById('btn-discovery');
             const status = document.getElementById('disc-status');
-            btn.disabled = true;
-            btn.textContent = 'Running...';
-            status.className = 'status show';
-            status.textContent = 'Running discovery...';
-
+            btn.disabled = true; btn.textContent = 'Running...';
+            status.className = 'status show'; status.textContent = 'Running discovery...';
             try {
-                const resp = await fetch(`${BASE}/job-hunter/run`, { method: 'POST' });
+                const resp = await fetch(BASE + '/api/discover', { method: 'POST' });
                 const data = await resp.json();
-                status.textContent = data.detail || `Result: ${resp.status}`;
-                if (resp.status === 200 || resp.status === 201) {
-                    status.textContent += ' - Discovery started';
-                }
-            } catch (err) {
-                status.textContent = 'Error: ' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Run Discovery';
-            }
+                status.textContent = data.detail || 'Result: ' + resp.status;
+            } catch (err) { status.textContent = 'Error: ' + err.message; }
+            finally { btn.disabled = false; btn.textContent = 'Run Discovery'; }
         });
 
         document.getElementById('btn-cleanup').addEventListener('click', async () => {
             const btn = document.getElementById('btn-cleanup');
             const status = document.getElementById('clean-status');
-            btn.disabled = true;
-            btn.textContent = 'Running...';
-            status.className = 'status show';
-            status.textContent = 'Running cleanup...';
-
+            btn.disabled = true; btn.textContent = 'Running...';
+            status.className = 'status show'; status.textContent = 'Running cleanup...';
             try {
-                const resp = await fetch(`${BASE}/job-hunter/cleanup`, { method: 'POST' });
+                const resp = await fetch(BASE + '/api/cleanup', { method: 'POST' });
                 const data = await resp.json();
-                status.textContent = data.detail || `Result: ${resp.status}`;
-            } catch (err) {
-                status.textContent = 'Error: ' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.textContent = 'Run Cleanup';
-            }
+                status.textContent = data.status || 'Result: ' + resp.status;
+                if (data.stdout) status.textContent += ' | ' + data.stdout.substring(0, 100);
+            } catch (err) { status.textContent = 'Error: ' + err.message; }
+            finally { btn.disabled = false; btn.textContent = 'Run Cleanup'; }
         });
 
         document.getElementById('btn-status').addEventListener('click', async () => {
             const status = document.getElementById('status-div');
             try {
-                const resp = await fetch(`${BASE}/job-hunter/health`);
+                const resp = await fetch(BASE + '/api/stats');
                 const data = await resp.json();
-                status.textContent = `Health: ${data.healthy ? 'OK' : 'ERROR'} | Jobs: ${data.job_count || 0} | DB: ${data.db_path || 'unknown'}`;
+                status.textContent = 'Total jobs: ' + (data.total || 0) + ' | Eligible: ' + (data.eligible || 0) + ' | Boards: ' + (data.boards || 0);
                 status.className = 'status show';
-            } catch (err) {
-                status.textContent = 'Error: ' + err.message;
-                status.className = 'status show';
-            }
+            } catch (err) { status.textContent = 'Error: ' + err.message; status.className = 'status show'; }
         });
 
         checkStatus();
