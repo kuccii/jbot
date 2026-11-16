@@ -1,0 +1,1 @@
+python3 /tmp/fix_server.py

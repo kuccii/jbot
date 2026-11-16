@@ -216,6 +216,32 @@ PREFERENCE_RE = re.compile(
     r"|".join(re.escape(w) for w in PREFERENCE_PHRASES), re.IGNORECASE
 )
 
+# Specific cities. A board-reported bare "Remote" must not be read as
+# "no restriction" when one of these appears in the title/description.
+CITY_NAMES = [
+    "mexico city", "ciudad de mexico", "ciudad de méxico", "cdmx",
+    "guadalajara", "monterrey", "new york", "san francisco", "los angeles",
+    "seattle", "austin", "boston", "chicago", "denver", "atlanta", "miami",
+    "toronto", "vancouver", "montreal", "london", "manchester", "dublin",
+    "berlin", "munich", "hamburg", "paris", "lyon", "madrid", "barcelona",
+    "lisbon", "porto", "amsterdam", "rotterdam", "brussels", "zurich",
+    "geneva", "vienna", "stockholm", "oslo", "copenhagen", "helsinki",
+    "warsaw", "krakow", "prague", "budapest", "bucharest", "sofia", "athens",
+    "istanbul", "tel aviv", "dubai", "abu dhabi", "riyadh", "doha",
+    "bangalore", "bengaluru", "mumbai", "new delhi", "delhi", "hyderabad",
+    "pune", "chennai", "gurgaon", "noida", "karachi", "lahore", "dhaka",
+    "colombo", "manila", "cebu", "jakarta", "kuala lumpur", "singapore",
+    "bangkok", "ho chi minh", "hanoi", "taipei", "hong kong", "shanghai",
+    "beijing", "shenzhen", "tokyo", "osaka", "seoul", "sydney", "melbourne",
+    "brisbane", "auckland", "wellington", "sao paulo", "são paulo",
+    "rio de janeiro", "buenos aires", "bogota", "bogotá", "lima", "santiago",
+    "montevideo", "johannesburg", "cape town", "durban", "lagos", "abuja",
+    "accra", "cairo", "casablanca",
+]
+_CITY_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(c) for c in CITY_NAMES) + r")\b", re.IGNORECASE,
+)
+
 
 def _is_generic_title(title: str) -> bool:
     """Return True if the title is a generic posting, not a real job."""
@@ -223,8 +249,8 @@ def _is_generic_title(title: str) -> bool:
 
 
 def _has_title_region_restriction(title: str) -> bool:
-    """Return True if the title contains a region/country code."""
-    return bool(_TITLE_REGION_RE.search(title))
+    """Return True if the title contains a region/country code or a city."""
+    return bool(_TITLE_REGION_RE.search(title) or _CITY_RE.search(title))
 
 
 def _has_description_restrictions(description: str) -> str | None:
@@ -270,22 +296,21 @@ VISA_NEGATIVE = re.compile(
 )
 
 
-def check_visa_sponsorship(job: Job) -> tuple[bool, str]:
-    """Eligibility for visa-sponsorship postings.
-
-    These jobs sponsor a work visa / relocation for candidates abroad, so
-    the usual "you must already be in country X" rule doesn't apply — the
-    employer handles the move. Only the ``visa_sponsorship`` board uses
-    this check, and only when the posting explicitly says it sponsors.
-    """
-    if job.board != "visa_sponsorship":
-        return False, "not a visa-sponsorship listing"
+def has_visa_sponsorship(job: Job) -> tuple[bool, str]:
+    """Sponsorship signal, independent of which board produced the job."""
     text = " ".join([job.title, job.tags, job.description]).lower()
     if VISA_NEGATIVE.search(text):
         return False, "sponsorship explicitly not available"
     if not VISA_POSITIVE.search(text):
         return False, "no visa sponsorship signal"
     return True, "employer offers visa sponsorship / relocation"
+
+
+def check_visa_sponsorship(job: Job) -> tuple[bool, str]:
+    """Board-scoped wrapper (kept for backward compatibility)."""
+    if job.board != "visa_sponsorship":
+        return False, "not a visa-sponsorship listing"
+    return has_visa_sponsorship(job)
 
 
 def check_eligibility(job: Job) -> tuple[bool, str]:
@@ -354,6 +379,14 @@ def check_eligibility(job: Job) -> tuple[bool, str]:
     remainder = " ".join(remainder.split())
 
     if not remainder:
+        # Bare "Remote": verify the title/description does not name a place.
+        # Africa signals win; a named non-African city means country-restricted.
+        blob = f"{job.title} {(job.description or '')[:400]}"
+        if _AFRICA_RE.search(blob):
+            return True, "remote / Africa signal"
+        city = _CITY_RE.search(blob)
+        if city:
+            return False, f"names a specific place: {city.group(0)[:40]}"
         return True, "remote / no location restriction"
 
     if _AFRICA_RE.search(remainder):

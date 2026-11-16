@@ -223,6 +223,38 @@ class SearchConfig(BaseModel):
     queries_per_run: int = 12
 
 
+from job_hunter import audience_rules as _rules
+
+
+class AudienceRules(BaseModel):
+    title_allow: list[str] = Field(default_factory=list)
+    title_deny: list[str] = Field(default_factory=list)
+    seniority_deny: list[str] = Field(default_factory=list)
+    generic_deny: list[str] = Field(default_factory=list)
+    require_company: bool = False
+    require_description: bool = False
+    require_company_or_description: bool = False
+    min_description_chars: int = 40
+
+
+class AudiencesConfig(BaseModel):
+    tech: AudienceRules = Field(default_factory=lambda: AudienceRules(
+        title_allow=_rules.TECH_TITLE_ALLOW, title_deny=_rules.TECH_TITLE_DENY,
+        seniority_deny=_rules.SENIORITY_DENY["tech"], generic_deny=_rules.GENERIC_DENY,
+        require_company=True, require_description=True,
+    ))
+    entry: AudienceRules = Field(default_factory=lambda: AudienceRules(
+        title_allow=_rules.ENTRY_TITLE_ALLOW, title_deny=_rules.ENTRY_TITLE_DENY,
+        seniority_deny=_rules.SENIORITY_DENY["entry"], generic_deny=_rules.GENERIC_DENY,
+        require_company_or_description=True,
+    ))
+    visa: AudienceRules = Field(default_factory=lambda: AudienceRules(
+        title_allow=_rules.VISA_TITLE_ALLOW, title_deny=_rules.VISA_TITLE_DENY,
+        seniority_deny=_rules.SENIORITY_DENY["visa"], generic_deny=_rules.GENERIC_DENY,
+        require_description=True,
+    ))
+
+
 class Config(BaseModel):
     profile: ProfileConfig = Field(default_factory=ProfileConfig)
     boards: dict[str, bool] = Field(default_factory=lambda: {
@@ -257,9 +289,11 @@ class Config(BaseModel):
     )
     database: str = "data/jobs.db"
     max_jobs_per_board: int = 9999  # No limit — scrape everything
+    wage_floor_usd_per_hour: float = 4.0
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     proxy: ProxyConfig = Field(default_factory=ProxyConfig)
     websearch: SearchConfig = Field(default_factory=SearchConfig)
+    audiences: AudiencesConfig = Field(default_factory=AudiencesConfig)
 
 
 def load_config(config_path: str | None = None) -> Config:
